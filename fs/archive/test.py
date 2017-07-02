@@ -49,6 +49,7 @@ class ArchiveReadTestCases(object):
         self.source_fs = source_fs = self.make_source_fs()
         self.build_source(source_fs)
         self.compress(self.handle, source_fs)
+        self.handle.seek(0)
         self.fs = self._archive_read_fs(self.handle)
 
         self.assertIsInstance(
