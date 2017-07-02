@@ -3,7 +3,7 @@ fs.proxy
 
 |Source| |PyPI| |Travis| |Codecov| |Codacy| |Format| |License|
 
-.. .. |Codacy| image:: https://img.shields.io/codacy/grade/<CODACY TOKEN>/master.svg?style=flat-square&maxAge=300
+.. |Codacy| image:: https://img.shields.io/codacy/grade/eadf418db5a84efd9fa1b470529dcad6/master.svg?style=flat-square&maxAge=300
    :target: https://www.codacy.com/app/althonos/fs.proxy/dashboard
 
 .. |Travis| image:: https://img.shields.io/travis/althonos/fs.archive/master.svg?style=flat-square&maxAge=300
@@ -69,7 +69,7 @@ Usage
 
 Use ``fs.open_fs`` to open an archive using one of the available protocols:
 
-* ``zip://``: open a ZIP archive using the ``fs.archive.zipfs.ZipFS`` 
+* ``zip://``: open a ZIP archive using the ``fs.archive.zipfs.ZipFS``
 
 All the filesystems implemented in ``fs.archive`` also support opening from
 a file handle, allowing to open an archive located on any other filesystem :

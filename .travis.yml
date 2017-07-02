@@ -1,0 +1,49 @@
+sudo: false
+language: python
+cache: pip
+
+python:
+- 2.7
+- 3.3
+- 3.4
+- 3.5
+- 3.6
+- pypy
+- pypy-5.3.1
+
+matrix:
+  allow_failures:
+  - python: pypy
+  - python: pypy-5.3.1
+
+before_install:
+- pip install -U setuptools wheel
+
+install:
+- pip install .
+
+script:
+- python setup.py test
+
+after_script:
+- bash <(curl -s https://codecov.io/bash)
+
+before_deploy:
+- "$(exit $(python setup.py check --restructuredtext 2>&1 | grep 'warning' -c >&1))"
+
+deploy:
+  provider: pypi
+  user: althonos
+  distributions: sdist bdist_wheel
+  on:
+    tags: true
+    repo: althonos/fs.archive
+    python: 3.6
+  password:
+    secure: HitjtW17iIsdGkyaVTOfM41SBjziQDr21ZoyQUGzfgt1rK/ENbt5bb8qMagXVF7CEZaATWanfUU8wmgs3HUviYyEjuJkPVjesgOXiZZXznYCMQuD/5wXhpxA5RnUm2tSPlA4gxfb/i3KvuGyJIWkHkCYeQlk0ff42aWr/bDT5s44WCgVO6j3FNe/BEqab/W14i6vnVEo6yvajQY6YdiJZ2dNPysBIGT/kFGdBbAGAxyZXalNQ/H4s4S8lcFnSIII1Jvrw8aGvFbUFenYSkFfEnDz2dFNBPrX4kpegmjH22tcDQdcmHEUfDsEnwtA9yHOlqGr10yCQCXMEfh1dea1ohhI43CO7Fc1A7pUWjJAD4IertYJXYaZs0CbwAklS9riICvQrktmqjWyOCoBRLfl5beYNkZLu755YCepApSjMpoz5hRbjkQyE4ugMGqSCMVtbCiKDTkFMMJLOkkjDR5UrXaTjEchfy8zLMbMOHH68+GY16emQlgnZgSt0r8/QkuhmnHzCu/bjHJ/8P7mCV4bgTpjjyI4p+XDVb/V4zcRRo+BV9YRId30VZOdOze2NfNm+KxL3US4mNTNE8cFLs+Dvv17+IvfpUAJdEjM7pBRqnKnaOYf6c0c/qjQI84lKSEzpvVwNoeOo9SZsWvduMNaY8c/pV5jIrB6wQlOiidCx2s=
+  server: https://upload.pypi.org/legacy/
+  skip_upload_docs: true
+
+notifications:
+  email:
+  - althonosdev@gmail.com
