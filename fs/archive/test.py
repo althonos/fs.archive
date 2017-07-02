@@ -85,7 +85,7 @@ class ArchiveReadTestCases(object):
             _ = next(self.fs.scandir('top.txt'))
 
     def test_readonly(self):
-        if not self.fs._meta.get('read_only', False):
+        if not self.fs.getmeta().get('read_only', False):
             self.skipTest("Filesystem is not read-only")
 
         with self.assertRaises(errors.ResourceReadOnly):

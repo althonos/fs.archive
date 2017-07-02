@@ -182,12 +182,11 @@ class ZipReadFS(base.ArchiveReadFS):
 
 class ZipSaver(base.ArchiveSaver):
 
-    def __init__(self, output, careful=True, to_stream=True, **options):
-        super(ZipSaver, self).__init__(output, careful, to_stream)
+    def __init__(self, output, overwrite=False, stream=True, **options):
+        super(ZipSaver, self).__init__(output, overwrite, stream)
         self.encoding = options.pop('encoding', 'utf-8')
         self.compression = options.pop('compression', zipfile.ZIP_DEFLATED)
         self.buffer_size = options.pop('buffer_size', io.DEFAULT_BUFFER_SIZE)
-        self.careful = careful
 
     def _to(self, handle, fs):
         _zip = zipfile.ZipFile(
