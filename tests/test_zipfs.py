@@ -25,7 +25,7 @@ def zip_compress(handle, source_fs):
     if hasattr(handle, 'seek') and handle.seekable():
         handle.seek(0)
     saver = fs.archive.zipfs.ZipSaver(handle, False)
-    saver.to_stream(source_fs)
+    saver.save(source_fs)
 
 
 class TestZipFS(fs.test.FSTestCases, unittest.TestCase):
