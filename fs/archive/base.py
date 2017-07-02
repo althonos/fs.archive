@@ -15,16 +15,24 @@ from ..base import FS
 from ..proxy.writer import ProxyWriter
 
 
+def _writable(handle):
+    try:
+        handle.write(b'')
+    except io.UnsupportedOperation:
+        return False
+    else:
+        return True
+
+
+
 @six.add_metaclass(abc.ABCMeta)
 class ArchiveSaver(object):
 
-    def __init__(self, output, overwrite=False, stream=True, **options):
+    def __init__(self, output, overwrite=False, initial_position=0, **options):
         self.output = output
         self.overwrite = overwrite
-        self.stream = stream
-
-        if hasattr(output, 'tell'):
-            self._initial_position = output.tell()
+        self.initial_position = initial_position
+        self.stream = isinstance(output, io.IOBase)
 
     def save(self, fs):
         if self.stream:
@@ -46,7 +54,7 @@ class ArchiveSaver(object):
             os.close(fd)
             self._to(temp, fs)
 
-            self.output.seek(self._initial_position)
+            self.output.seek(self.initial_position)
             with open(temp, 'rb') as f:
                 shutil.copyfileobj(f, self.output)
 
@@ -104,32 +112,29 @@ class ArchiveFS(ProxyWriter):
 
     def __init__(self, handle, proxy=None, **options):
 
+        initial_position = 0
+
+        if isinstance(handle, six.binary_type):
+            handle = handle.decode('utf-8')
+
         if isinstance(handle, six.text_type):
-            stream = False
-            saver = True
+            create_saver = True
+            read_only = self._read_fs_cls(handle, **options) \
+                        if os.path.exists(handle) else None
 
-            if os.path.exists(handle):
-                read_only = self._read_fs_cls(handle, **options)
-            else:
-                read_only = None
-
-
-        elif isinstance(handle, io.IOBase):
-            stream = True
-            saver = handle.writable()
-
-            if handle.readable() and handle.seekable():
-                read_only = self._read_fs_cls(handle, **options)
-            else:
-                read_only = None
+        elif hasattr(handle, 'read'):
+            create_saver = _writable(handle)
+            initial_position = getattr(handle, 'tell', lambda: 0)()
+            read_only = self._read_fs_cls(handle, **options) \
+                        if handle.readable() and handle.seekable() \
+                        else None
 
         else:
             raise errors.CreateFailed("cannot use {}".format(handle))
 
-        if saver:
-            self._saver = self._saver_cls(handle, read_only is not None, stream)
-        else:
-            self._saver = None
+        overwrite = read_only is not None
+        self._saver = self._saver_cls(handle, overwrite, initial_position) \
+                      if create_saver else None
 
         super(ArchiveFS, self).__init__(read_only, proxy)
 
