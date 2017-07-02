@@ -7,6 +7,7 @@ import os
 import abc
 import six
 import sys
+import shutil
 import tempfile
 
 from .. import open_fs
@@ -171,6 +172,14 @@ class ArchiveReadTestCases(object):
 @six.add_metaclass(abc.ABCMeta)
 class ArchiveIOTestCases(object):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.tempdir = tempfile.mkdtemp()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tempdir)
+
     @abc.abstractproperty
     def _archive_fs(self):
         raise NotImplementedError()
@@ -279,8 +288,8 @@ class ArchiveIOTestCases(object):
         )
 
     def test_read_file(self):
-        filename = self.make_archive(tempfile.mktemp())
-        with self._archive_fs(filename) as zipfs:
+        filename = os.path.join(self.tempdir, 'read')
+        with self._archive_fs(self.make_archive(filename)) as zipfs:
             self._test_read(zipfs)
 
         self.assertEqual(
@@ -293,8 +302,8 @@ class ArchiveIOTestCases(object):
         )
 
     def test_read_write_file(self):
-        filename = self.make_archive(tempfile.mktemp())
-        with self._archive_fs(filename) as zipfs:
+        filename = os.path.join(self.tempdir, 'write')
+        with self._archive_fs(self.make_archive(filename)) as zipfs:
             self._test_read_write(zipfs)
 
         self.assertEqual(
@@ -307,7 +316,7 @@ class ArchiveIOTestCases(object):
         )
 
     def test_write_file(self):
-        filename = tempfile.mktemp()
+        filename = os.path.join(self.tempdir, 'read_write')
         with self._archive_fs(filename) as zipfs:
             self._test_write(zipfs)
 
