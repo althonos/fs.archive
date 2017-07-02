@@ -58,6 +58,8 @@ class ArchiveSaver(object):
             with open(temp, 'rb') as f:
                 shutil.copyfileobj(f, self.output)
 
+            os.remove(temp)
+
         else:
             self._to(self.output, fs)
 
