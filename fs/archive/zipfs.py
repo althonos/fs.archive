@@ -92,7 +92,7 @@ class ZipReadFS(base.ArchiveReadFS):
                     'size': zip_info.file_size,
                     'type': int(
                         ResourceType.directory
-                        if zip_info.is_dir() else
+                        if zip_info.filename.endswith('/') else
                         ResourceType.file
                     ),
                     'modified': modified_epoch
@@ -182,8 +182,8 @@ class ZipReadFS(base.ArchiveReadFS):
 
 class ZipSaver(base.ArchiveSaver):
 
-    def __init__(self, output, overwrite=False, stream=True, **options):
-        super(ZipSaver, self).__init__(output, overwrite, stream)
+    def __init__(self, output, overwrite=False, initial_position=0, **options):
+        super(ZipSaver, self).__init__(output, overwrite, initial_position)
         self.encoding = options.pop('encoding', 'utf-8')
         self.compression = options.pop('compression', zipfile.ZIP_DEFLATED)
         self.buffer_size = options.pop('buffer_size', io.DEFAULT_BUFFER_SIZE)
@@ -230,9 +230,19 @@ class ZipSaver(base.ArchiveSaver):
                     if size is not None and size > 0:
                         zip_info.file_size = size
 
+
                     with fs.openbin(path, 'rb') as src_file:
-                        with _zip.open(zip_info, 'w') as dst_file:
-                            shutil.copyfileobj(src_file, dst_file, self.buffer_size)
+                        self._write_to_zip(_zip, zip_info, src_file)
+                        # with _zip.open(zip_info, 'w') as dst_file:
+                        #     shutil.copyfileobj(src_file, dst_file, self.buffer_size)
+
+    if six.PY3:
+        def _write_to_zip(self, _zip, zip_info, src_file):
+            with _zip.open(zip_info, 'w') as dst_file:
+                shutil.copyfileobj(src_file, dst_file, self.buffer_size)
+    else:
+        def _write_to_zip(self, _zip, zip_info, src_file):
+            _zip.writestr(zip_info, src_file.read())
 
 
 class ZipFS(base.ArchiveFS):
