@@ -14,6 +14,8 @@ from ..mode import Mode
 from ..time import datetime_to_epoch
 from ..path import dirname, basename, relpath, abspath
 from ..enums import ResourceType
+from ..iotools import RawWrapper
+from ..permissions import Permissions
 
 from . import base
 
@@ -116,11 +118,11 @@ class TarReadFS(base.ArchiveReadFS):
                 }
         if 'access' in namespaces and _path not in '/':
             info['access'] = {
-                'gid': member.gid,
-                'group': member.gname,
-                'permissions': Permissions(mode=member.mode).dump(),
-                'uid': member.uid,
-                'user': member.uname,
+                'gid': tar_info.gid,
+                'group': tar_info.gname,
+                'permissions': Permissions(mode=tar_info.mode).dump(),
+                'uid': tar_info.uid,
+                'user': tar_info.uname,
             }
         if 'tar' in namespaces and _path not in '/':
             info['tar'] = tar_info.get_info(self.encoding) \
@@ -146,13 +148,16 @@ class TarReadFS(base.ArchiveReadFS):
         if not tar_info.isfile():
             raise errors.FileExpected(path)
 
-        return self._tar.extractfile(tar_info)
+        bin_file = self._tar.extractfile(tar_info)
+        if six.PY2: bin_file.flush = lambda: None
+
+        return RawWrapper(bin_file)
 
 
 class TarSaver(base.ArchiveSaver):
 
-    def __init__(self, output, overwrite=False, stream=True, **options):
-        super(TarSaver, self).__init__(output, overwrite, stream)
+    def __init__(self, output, overwrite=False, initial_position=0, **options):
+        super(TarSaver, self).__init__(output, overwrite, initial_position)
         self.encoding = options.pop('encoding', 'utf-8')
         self.compression = options.pop('compression', '')
         self.buffer_size = options.pop('buffer_size', io.DEFAULT_BUFFER_SIZE)
@@ -164,10 +169,10 @@ class TarSaver(base.ArchiveSaver):
             v:k for k,v in TarReadFS._TYPE_MAP.items()}
 
         mode = 'w:{}'.format(self.compression or '')
-        if self.stream:
-            _tar = tarfile.open(fileobj=self.output, mode=mode)
+        if isinstance(handle, io.IOBase):
+            _tar = tarfile.open(fileobj=handle, mode=mode)
         else:
-            _tar = tarfile.open(self.output, mode=mode)
+            _tar = tarfile.open(handle, mode=mode)
 
         current_time = time.time()
 
