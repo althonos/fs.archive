@@ -1,5 +1,5 @@
-fs.proxy
-========
+fs.archive
+==========
 
 |Source| |PyPI| |Travis| |Codecov| |Codacy| |Format| |License|
 
@@ -36,6 +36,8 @@ Requirements
 +-------------------+-----------------+-------------------+--------------------+
 | **six**           | |PyPI six|      | |Source six|      | |License six|      |
 +-------------------+-----------------+-------------------+--------------------+
+| **fs.proxy**      | |PyPI fs.proxy| | |Source fs.proxy| | |License fs.proxy| |
++-------------------+-----------------+-------------------+--------------------+
 
 .. |License six| image:: https://img.shields.io/pypi/l/six.svg?maxAge=300&style=flat-square
    :target: https://choosealicense.com/licenses/mit/
@@ -54,6 +56,16 @@ Requirements
 
 .. |PyPI fs| image:: https://img.shields.io/pypi/v/fs.svg?maxAge=300&style=flat-square
    :target: https://pypi.python.org/pypi/fs
+
+.. |License fs.proxy| image:: https://img.shields.io/pypi/l/fs.proxy.svg?maxAge=300&style=flat-square
+   :target: https://choosealicense.com/licenses/mit/
+
+.. |Source fs.proxy| image:: https://img.shields.io/badge/source-GitHub-303030.svg?maxAge=300&style=flat-square
+   :target: https://github.com/althonos/fs.proxy
+
+.. |PyPI fs.proxy| image:: https://img.shields.io/pypi/v/fs.proxy.svg?maxAge=300&style=flat-square
+   :target: https://pypi.python.org/pypi/fs.proxy
+
 
 
 Installation
