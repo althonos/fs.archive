@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import io
+import sys
 import six
 import time
 import shutil
@@ -236,7 +237,7 @@ class ZipSaver(base.ArchiveSaver):
                         # with _zip.open(zip_info, 'w') as dst_file:
                         #     shutil.copyfileobj(src_file, dst_file, self.buffer_size)
 
-    if six.PY3:
+    if sys.version_info >= (3, 6):
         def _write_to_zip(self, _zip, zip_info, src_file):
             with _zip.open(zip_info, 'w') as dst_file:
                 shutil.copyfileobj(src_file, dst_file, self.buffer_size)
