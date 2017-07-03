@@ -47,7 +47,7 @@ class TarReadFS(base.ArchiveReadFS):
     }
 
     def __init__(self, handle, **options):
-        super(TarReadFS, self).__init__(handle)
+        super(TarReadFS, self).__init__(handle, **options)
 
         if isinstance(handle, io.IOBase):
             self._tar = TarFile.open(fileobj=handle, mode='r')

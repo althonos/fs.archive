@@ -255,7 +255,7 @@ class ArchiveIOTestCases(object):
 
     def test_read_stream(self):
         stream = self.make_archive(io.BytesIO())
-        with self._archive_fs(io.BufferedReader(stream)) as archive_fs:
+        with self._archive_fs(io.BufferedReader(stream), close_handle=False) as archive_fs:
             self._test_read(archive_fs)
 
         self.assertEqual(
@@ -269,7 +269,7 @@ class ArchiveIOTestCases(object):
 
     def test_read_write_stream(self):
         stream = self.make_archive(io.BytesIO())
-        with self._archive_fs(stream) as archive_fs:
+        with self._archive_fs(stream, close_handle=False) as archive_fs:
             self._test_read_write(archive_fs)
 
         self.assertEqual(
@@ -284,7 +284,7 @@ class ArchiveIOTestCases(object):
     def test_write_stream(self):
         stream = io.BytesIO()
         stream.readable = lambda: False   # mock a write-only stream
-        with self._archive_fs(stream) as zipfs:
+        with self._archive_fs(stream, close_handle=False) as zipfs:
             self._test_write(zipfs)
 
         self.assertEqual(
@@ -328,6 +328,7 @@ class ArchiveIOTestCases(object):
         filename = os.path.join(self.tempdir, 'read_write')
         with self._archive_fs(filename) as zipfs:
             self._test_write(zipfs)
+            print(zipfs._saver)
 
         self.assertEqual(
             sorted(self.iter_dirs(filename)),

@@ -37,7 +37,7 @@ class ZipReadFS(base.ArchiveReadFS):
     }
 
     def __init__(self, handle, **options):
-        super(ZipReadFS, self).__init__(handle)
+        super(ZipReadFS, self).__init__(handle, **options)
         self._zip = zipfile.ZipFile(handle)
 
         self._namelist = self._zip.namelist()
