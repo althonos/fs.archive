@@ -94,13 +94,6 @@ from the file extension the type to use :
     <class 'fs.archive.zipfs.ZipFS'>
 
 
-It is also possible to use ``fs.open_fs``, to open an archive using one of
-the available protocols:
-
-* ``zip://``: open a ZIP archive using the ``fs.archive.zipfs.ZipFS`` filesystem
-* ``tar://``: open a Tar archive using the ``fs.archive.tarfs.TarFS`` filesystem
-
-
 All the filesystems implemented in ``fs.archive`` also support reading and
 writing from and to a file handle a file handle:
 
