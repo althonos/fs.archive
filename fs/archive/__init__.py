@@ -22,12 +22,15 @@ def open_archive(fs_url, archive):
     #     raise TypeError('bad entry point')
 
     try:
-        with open_fs(fs_url) as fs:
-            binfile = fs.openbin(archive, 'r+' if fs.isfile(archive) else 'w')
-            archive_fs = archive_opener(binfile)
-            yield archive_fs
+        #with open_fs(fs_url) as fs:
+        fs = open_fs(fs_url)
+        binfile = fs.openbin(archive, 'r+' if fs.isfile(archive) else 'w')
+        archive_fs = archive_opener(binfile)
+        yield archive_fs
     finally:
         archive_fs.close()
         binfile.close()
+        if fs is not fs_url: # close the fs if we opened it
+            fs.close()
 
 __all__ = ['open_archive']
