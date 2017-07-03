@@ -4,16 +4,20 @@ from __future__ import unicode_literals
 
 import six
 import contextlib
+import pkg_resources
 
-from pkg_resources import iter_entry_points, DistributionNotFound
+from .. import errors
+from ..path import basename
 from ..opener import open_fs
 from ..opener._errors import Unsupported
-from ..path import basename
+
+from . import base
+
 
 @contextlib.contextmanager
 def open_archive(fs_url, archive):
 
-    it = iter_entry_points('fs.archive.open_archive')
+    it = pkg_resources.iter_entry_points('fs.archive.open_archive')
     entry_point = next((ep for ep in it if archive.endswith(ep.name)), None)
 
     if entry_point is None:
@@ -22,7 +26,7 @@ def open_archive(fs_url, archive):
 
     try:
         archive_opener = entry_point.load()
-    except DistributionNotFound as df:
+    except pkg_resources.DistributionNotFound as df:
         six.raise_from(Unsupported(
             'extension {} requires {}'.format(entry_point.name, df.req)), None)
 
@@ -31,12 +35,24 @@ def open_archive(fs_url, archive):
 
     try:
         fs = open_fs(fs_url)
-        binfile = fs.openbin(archive, 'r+' if fs.isfile(archive) else 'w')
+
+        if issubclass(archive_opener, base.ArchiveFS):
+            try:
+                binfile = fs.openbin(archive, 'r+')
+            except errors.ResourceNotFound:
+                binfile = fs.openbin(archive, 'w')
+            except errors.ResourceReadOnly:
+                binfile = fs.openbin(archive, 'r')
+                archive_opener = archive_opener._read_fs_cls
+
+        elif issubclass(archive_opener, base.ArchiveReadFS):
+            binfile = fs.openbin(archive, 'r')
 
         if not hasattr(binfile, 'name'):
             binfile.name = basename(archive)
 
         archive_fs = archive_opener(binfile)
+
         yield archive_fs
 
     except Exception:
