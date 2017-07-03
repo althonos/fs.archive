@@ -12,7 +12,7 @@ from .. import errors
 from ..info import Info
 from ..mode import Mode
 from ..time import datetime_to_epoch
-from ..path import dirname, basename, relpath, abspath
+from ..path import dirname, basename, relpath, abspath, splitext
 from ..enums import ResourceType
 from ..iotools import RawWrapper
 from ..permissions import Permissions
@@ -49,9 +49,9 @@ class TarReadFS(base.ArchiveReadFS):
         super(TarReadFS, self).__init__(handle)
 
         if isinstance(handle, io.IOBase):
-            self._tar = tarfile.TarFile(fileobj=handle, mode='r')
+            self._tar = tarfile.TarFile.open(fileobj=handle, mode='r')
         else:
-            self._tar = tarfile.TarFile(handle, mode='r')
+            self._tar = tarfile.TarFile.open(handle, mode='r')
 
         self._contents = set(self._tar.getnames())
         self._encoding = options.get('encoding', 'utf-8')
@@ -156,10 +156,22 @@ class TarReadFS(base.ArchiveReadFS):
 
 class TarSaver(base.ArchiveSaver):
 
+    _compression_map = {
+        '.tar': '', '.xz': 'xz', '.txz': 'xz',
+        '.gz': 'gz', '.tgz':'gz', '.bz2': 'bz2', '.tbz':'bz2',
+    }
+
     def __init__(self, output, overwrite=False, initial_position=0, **options):
         super(TarSaver, self).__init__(output, overwrite, initial_position)
         self.encoding = options.pop('encoding', 'utf-8')
+
         self.compression = options.pop('compression', '')
+
+        if not self.compression and hasattr(output, 'name'):
+            _, extension = splitext(output.name)
+            self.compression = self._compression_map.get(extension, '')
+
+
         self.buffer_size = options.pop('buffer_size', io.DEFAULT_BUFFER_SIZE)
 
     def _to(self, handle, fs):
