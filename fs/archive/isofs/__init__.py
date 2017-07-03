@@ -188,7 +188,6 @@ class ISOReadFS(base.ArchiveReadFS):
                 record_path = join(subpath, record_name)
                 self._path_table[record_path] = r
 
-
     def _get_block(self, block_id):
         self._stream.seek(self._blocksize * block_id)
         return self._stream.read(self._blocksize)

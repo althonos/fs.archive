@@ -199,7 +199,7 @@ class ArchiveFS(ProxyWriter):
         else:
             raise errors.CreateFailed("cannot use {}".format(handle))
 
-        overwrite = read_only is not None
+        overwrite = read_fs is not None
         if create_saver:
             self._saver = self._saver_cls(handle, overwrite, initial_position)
 

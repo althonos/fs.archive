@@ -3,7 +3,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import six
-import contextlib
 import pkg_resources
 
 from .. import errors
@@ -14,7 +13,6 @@ from ..opener._errors import Unsupported
 from . import base
 
 
-@contextlib.contextmanager
 def open_archive(fs_url, archive):
 
     it = pkg_resources.iter_entry_points('fs.archive.open_archive')
@@ -34,6 +32,8 @@ def open_archive(fs_url, archive):
     #     raise TypeError('bad entry point')
 
     try:
+        binfile = None
+        archive_fs = None
         fs = open_fs(fs_url)
 
         if issubclass(archive_opener, base.ArchiveFS):
@@ -53,13 +53,9 @@ def open_archive(fs_url, archive):
 
         archive_fs = archive_opener(binfile)
 
-        yield archive_fs
-
     except Exception:
-        raise
+        getattr(archive_fs, 'close', lambda: None)()
+        getattr(binfile, 'close', lambda: None)()
 
-    finally:
-        archive_fs.close()
-        binfile.close()
-        if fs is not fs_url: # close the fs if we opened it
-            fs.close()
+    else:
+        return archive_fs
