@@ -10,17 +10,16 @@ import shutil
 import zipfile
 import datetime
 
-from .. import errors
-from ..info import Info
-from ..mode import Mode
-from ..time import datetime_to_epoch
-from ..path import forcedir, relpath, dirname, basename, abspath
-from ..path import iteratepath, recursepath, frombase, join
-from ..enums import ResourceType
-from ..iotools import RawWrapper
+from ... import errors
+from ...info import Info
+from ...mode import Mode
+from ...time import datetime_to_epoch
+from ...path import forcedir, relpath, dirname, basename, abspath
+from ...path import iteratepath, recursepath, frombase, join
+from ...enums import ResourceType
+from ...iotools import RawWrapper
 
-
-from . import base
+from .. import base
 
 
 

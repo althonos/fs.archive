@@ -8,63 +8,18 @@ import time
 import tarfile
 import datetime
 
-from .. import errors
-from ..info import Info
-from ..mode import Mode
-from ..time import datetime_to_epoch
-from ..path import dirname, basename, relpath, abspath, splitext
-from ..enums import ResourceType
-from ..iotools import RawWrapper
-from ..permissions import Permissions
+from ... import errors
+from ...info import Info
+from ...mode import Mode
+from ...time import datetime_to_epoch
+from ...path import dirname, basename, relpath, abspath, splitext
+from ...enums import ResourceType
+from ...iotools import RawWrapper
+from ...permissions import Permissions
 
-from . import base
+from .. import base
 
-
-# Backport Tarfile.xzopen in Python 2
-if six.PY2:
-    try:
-        from backports import lzma
-    except ImportError:
-        lzma = None
-
-    class TarFile(tarfile.TarFile):
-
-        if lzma is not None:
-            OPEN_METH = {
-                "tar": "taropen",   # uncompressed tar
-                "gz":  "gzopen",    # gzip compressed tar
-                "bz2": "bz2open",   # bzip2 compressed tar
-                "xz":  "xzopen",    # xz compressed tar
-            }
-
-            @classmethod
-            def xzopen(cls, name, mode="r", fileobj=None, preset=None, **kwargs):
-                """Open lzma compressed tar archive name for reading or writing.
-                   Appending is not allowed.
-
-                   Backported from `Python 3.6
-                   <https://github.com/python/cpython/blob/3.6/Lib/tarfile.py>`_
-                """
-                if mode not in ("r", "w", "x"):
-                    raise ValueError("mode must be 'r', 'w' or 'x'")
-
-                fileobj = lzma.LZMAFile(fileobj or name, mode, preset=preset)
-
-                try:
-                    t = cls.taropen(name, mode, fileobj, **kwargs)
-                except (lzma.LZMAError, EOFError):
-                    fileobj.close()
-                    if mode == 'r':
-                        raise tarfile.ReadError("not an lzma file")
-                    raise
-                except:
-                    fileobj.close()
-                    raise
-                t._extfileobj = False
-                return t
-
-else:
-    TarFile = tarfile.TarFile
+from .file import TarFile
 
 
 class TarReadFS(base.ArchiveReadFS):
