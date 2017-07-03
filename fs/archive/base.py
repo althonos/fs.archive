@@ -6,6 +6,7 @@ import os
 import io
 import abc
 import six
+import sys
 import shutil
 import tempfile
 
@@ -15,7 +16,7 @@ from ..base import FS
 from ..proxy.writer import ProxyWriter
 
 def _writable(handle):
-    if isinstance(handle, io.IOBase):
+    if isinstance(handle, io.IOBase) and sys.version_info >= (3, 5):
         return handle.writable()
     try:
         handle.write(b'')

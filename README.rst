@@ -111,8 +111,8 @@ writing from and to a file handle a file handle:
     ...     with fs.archive.tarfs.TarFS(mem.openbin(u'test.tar', 'w')) as tar:
     ...         tar.setbytes(u'hello', b'Hello, World!')
     ...     with fs.archive.tarfs.TarFS(mem.openbin(u'test.tar', 'r+')) as tar:
-    ...         tar.getbytes(u'hello')
-    b'Hello, World!'
+    ...         tar.isfile(u'hello')
+    True
 
 
 ``fs.archive`` declares three abstract base classes in ``fs.archive.base``:
