@@ -20,6 +20,58 @@ from ..permissions import Permissions
 from . import base
 
 
+# Backport Tarfile.xzopen in Python 2
+if six.PY2:
+    try:
+        from backports import lzma
+    except ImportError:
+        lzma = None
+
+    class TarFile(tarfile.TarFile):
+
+        OPEN_METH = {
+            "tar": "taropen",   # uncompressed tar
+            "gz":  "gzopen",    # gzip compressed tar
+            "bz2": "bz2open",   # bzip2 compressed tar
+        }
+
+        if lzma is not None:
+            OPEN_METH = {
+                "tar": "taropen",   # uncompressed tar
+                "gz":  "gzopen",    # gzip compressed tar
+                "bz2": "bz2open",   # bzip2 compressed tar
+                "xz":  "xzopen",    # xz compressed tar
+            }
+
+            @classmethod
+            def xzopen(cls, name, mode="r", fileobj=None, preset=None, **kwargs):
+                """Open lzma compressed tar archive name for reading or writing.
+                   Appending is not allowed.
+
+                   Backported from `Python 3.6
+                   <https://github.com/python/cpython/blob/3.6/Lib/tarfile.py>`_
+                """
+                if mode not in ("r", "w", "x"):
+                    raise ValueError("mode must be 'r', 'w' or 'x'")
+
+                fileobj = lzma.LZMAFile(fileobj or name, mode, preset=preset)
+
+                try:
+                    t = cls.taropen(name, mode, fileobj, **kwargs)
+                except (lzma.LZMAError, EOFError):
+                    fileobj.close()
+                    if mode == 'r':
+                        raise tarfile.ReadError("not an lzma file")
+                    raise
+                except:
+                    fileobj.close()
+                    raise
+                t._extfileobj = False
+                return t
+
+else:
+    TarFile = tarfile.TarFile
+
 
 class TarReadFS(base.ArchiveReadFS):
 
@@ -49,9 +101,9 @@ class TarReadFS(base.ArchiveReadFS):
         super(TarReadFS, self).__init__(handle)
 
         if isinstance(handle, io.IOBase):
-            self._tar = tarfile.TarFile.open(fileobj=handle, mode='r')
+            self._tar = TarFile.open(fileobj=handle, mode='r')
         else:
-            self._tar = tarfile.TarFile.open(handle, mode='r')
+            self._tar = TarFile.open(handle, mode='r')
 
         self._contents = set(self._tar.getnames())
         self._encoding = options.get('encoding', 'utf-8')
@@ -182,9 +234,9 @@ class TarSaver(base.ArchiveSaver):
 
         mode = 'w:{}'.format(self.compression or '')
         if isinstance(handle, io.IOBase):
-            _tar = tarfile.open(fileobj=handle, mode=mode)
+            _tar = TarFile.open(fileobj=handle, mode=mode)
         else:
-            _tar = tarfile.open(handle, mode=mode)
+            _tar = TarFile.open(handle, mode=mode)
 
         current_time = time.time()
 

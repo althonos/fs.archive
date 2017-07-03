@@ -7,10 +7,19 @@ import gzip
 import zipfile
 import tarfile
 import unittest
+import pkg_resources
+
+try:
+    import lzma
+except ImportError:
+    try:
+        from backports import lzma
+    except ImportError:
+        lzma = None
 
 import fs.archive
 from fs.archive.zipfs import ZipFS
-from fs.archive.tarfs import TarFS
+from fs.archive.tarfs import TarFS, TarFile
 from fs.opener import _errors as errors
 
 
@@ -41,7 +50,6 @@ class TestOpenArchive(unittest.TestCase):
 
         # Check we can write
         with fs.archive.open_archive(mem, filename) as archive:
-            print(archive._saver.compression)
             self.assertIsInstance(archive, fs.archive.tarfs.TarFS)
             archive.settext('abc.txt', 'abc')
             archive.makedir('dir')
@@ -49,13 +57,13 @@ class TestOpenArchive(unittest.TestCase):
         # Check the dumped archive is a gzipped file
         with mem.openbin(filename) as mytar:
             arc = arcfile(mytar)
-            arc.read()
+            arc.read(1)
 
         # Check we can open it normally
         with mem.openbin(filename) as mytar:
-            tar = getattr(tarfile.TarFile, opener)(filename, fileobj=mytar)
+            tar = getattr(TarFile, opener)(filename, fileobj=mytar)
         with mem.openbin(filename) as mytar:
-            tar = tarfile.TarFile.open(filename, fileobj=mytar)
+            tar = TarFile.open(filename, fileobj=mytar)
 
         # Check we can read it with the TarFS
         with fs.archive.open_archive(mem, filename) as archive:
@@ -67,15 +75,14 @@ class TestOpenArchive(unittest.TestCase):
         self._test_tar('mytar.tar.gz', arc_gz, 'gzopen')
         self._test_tar('mytar.tgz', arc_gz, 'gzopen')
 
-    @unittest.skipIf(six.PY2, 'lzma not supported in Python 2')
+    @unittest.skipIf(lzma is None, 'lzma module is not installed')
     def test_tar_xz(self):
-        import lzma
         arc_lz = lambda fileobj: lzma.LZMAFile(fileobj)
         self._test_tar('mytar.tar.xz', arc_lz, 'xzopen')
         self._test_tar('mytar.txz', arc_lz, 'xzopen')
 
-    @unittest.skipIf(six.PY3, 'lzma not supported in Python 2 only')
-    def test_tar_xz_missing(self):
+    @unittest.skipUnless(lzma is None, 'lzma module is installed')
+    def test_tar_no_xz(self):
         with self.assertRaises(errors.Unsupported):
             with fs.archive.open_archive('mem://', 'archive.tar.xz'):
                 pass
