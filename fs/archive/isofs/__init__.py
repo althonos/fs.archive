@@ -92,6 +92,10 @@ class ISOReadFile(io.RawIOBase):
     def tellable(self):
         return True
 
+    def writable(self):
+        return False
+
+
 class ISOReadFS(base.ArchiveReadFS):
 
     _meta = {
@@ -107,7 +111,7 @@ class ISOReadFS(base.ArchiveReadFS):
     def __init__(self, handle, **options):
         """Create a new read-only filesystem from an ISO image byte stream.
         """
-        super(ReadISOFS, self).__init__(handle)
+        super(ISOReadFS, self).__init__(handle)
 
         if isinstance(handle, six.binary_type):
             handle = handle.decode('utf-8')
@@ -174,15 +178,16 @@ class ISOReadFS(base.ArchiveReadFS):
 
     def _find(self, path):
         for subpath in recursepath(path):
-            try:
-                record = self._path_table[subpath]
-            except KeyError:
+
+            record = self._path_table.get(subpath)
+            if record is None:
                 raise errors.ResourceNotFound(subpath)
 
-            for record in self._directory_records(record["Location of Extent"]):
-                record_path = join(
-                    subpath, record['File Identifier'].decode('ascii'))
-                self._path_table[record_path] = record
+            for r in self._directory_records(record["Location of Extent"]):
+                record_name = r['File Identifier'].decode('ascii').split(';')[0]
+                record_path = join(subpath, record_name)
+                self._path_table[record_path] = r
+
 
     def _get_block(self, block_id):
         self._stream.seek(self._blocksize * block_id)
