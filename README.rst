@@ -79,21 +79,41 @@ Install directly from PyPI, using `pip <https://pip.pypa.io/>`_ ::
 Usage
 -----
 
-Use ``fs.open_fs`` to open an archive using one of the available protocols:
+The ``fs.archive.open_archive`` context manager is the easiest way to open an
+archive filesystem, with an archive located on any other filesystem, determining
+from the file extension the type to use :
+
+.. code:: python
+
+    >>> from fs import open_fs
+    >>> from fs.archive import open_archive
+
+    >>> my_fs = open_fs('temp://')
+    >>> with open_archive(my_fs, 'test.zip') as archive:
+    ...     type(archive)
+    <class 'fs.archive.zipfs.ZipFS'>
+
+
+It is also possible to use ``fs.open_fs``, to open an archive using one of
+the available protocols:
 
 * ``zip://``: open a ZIP archive using the ``fs.archive.zipfs.ZipFS`` filesystem
 * ``tar://``: open a Tar archive using the ``fs.archive.tarfs.TarFS`` filesystem
 
-All the filesystems implemented in ``fs.archive`` also support opening from
-a file handle, allowing to open an archive located on any other filesystem :
+
+All the filesystems implemented in ``fs.archive`` also support reading and
+writing from and to a file handle a file handle:
 
 .. code:: python
 
-    >>> import fs.archive
-    >>> with fs.open_fs('ftp://ftp.ebi.ac.uk/pub/embnet.news/') as server:
-    ...    with fs.archive.zipfs.ZipFS(server.openbin('emnn54.zip')) as zipfile:
-    ...        print(sorted(zipfile.listdir('/')))
-    ['emnn54.ps']
+    >>> import fs.archive.tarfs
+    >>> with fs.open_fs('mem://') as mem:
+    ...     with fs.archive.tarfs.TarFS(mem.openbin('test.tar', 'w')) as tar:
+    ...         tar.setbytes('hello', b'Hello, World!')
+    ...     with fs.archive.tarfs.TarFS(mem.openbin('test.tar', 'r+')) as tar:
+    ...         tar.getbytes('hello')
+    b'Hello, World!'
+
 
 ``fs.archive`` declares three abstract base classes in ``fs.archive.base``:
 

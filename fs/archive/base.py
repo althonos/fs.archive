@@ -15,6 +15,8 @@ from ..base import FS
 from ..proxy.writer import ProxyWriter
 
 def _writable(handle):
+    if isinstance(handle, io.IOBase):
+        return handle.writable()
     try:
         handle.write(b'')
     except (io.UnsupportedOperation, OSError):
