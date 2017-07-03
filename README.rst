@@ -75,6 +75,11 @@ Install directly from PyPI, using `pip <https://pip.pypa.io/>`_ ::
 
     pip install fs.archive
 
+Install the ``tar.xz`` extra to enforce support for tar archives compressed
+with `xz` ::
+
+    pip install fs.archive[tar.xz]
+
 
 Usage
 -----
