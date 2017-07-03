@@ -81,17 +81,19 @@ Usage
 
 Use ``fs.open_fs`` to open an archive using one of the available protocols:
 
-* ``zip://``: open a ZIP archive using the ``fs.archive.zipfs.ZipFS``
+* ``zip://``: open a ZIP archive using the ``fs.archive.zipfs.ZipFS`` filesystem
+* ``tar://``: open a Tar archive using the ``fs.archive.tarfs.TarFS`` filesystem
 
 All the filesystems implemented in ``fs.archive`` also support opening from
 a file handle, allowing to open an archive located on any other filesystem :
 
 .. code:: python
 
-    import fs.archive
-    with fs.open_fs('ftp://ftp.server.org') as server:
-      with fs.archive.ZipFS(server.openbin('myarchive.zip')):
-        # ... do your things with the archive ... #
+    >>> import fs.archive
+    >>> with fs.open_fs('ftp://ftp.ebi.ac.uk/pub/embnet.news/') as server:
+    ...    with fs.archive.zipfs.ZipFS(server.openbin('emnn54.zip')) as zipfile:
+    ...        print(sorted(zipfile.listdir('/')))
+    ['emnn54.ps']
 
 ``fs.archive`` declares three abstract base classes in ``fs.archive.base``:
 

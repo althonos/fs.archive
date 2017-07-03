@@ -14,11 +14,10 @@ from .. import errors
 from ..base import FS
 from ..proxy.writer import ProxyWriter
 
-
 def _writable(handle):
     try:
         handle.write(b'')
-    except io.UnsupportedOperation:
+    except (io.UnsupportedOperation, OSError):
         return False
     else:
         return True
