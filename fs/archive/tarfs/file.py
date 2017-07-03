@@ -22,7 +22,7 @@ class TarFile(tarfile.TarFile):
         OPEN_METH["xz"] = "xzopen"
 
     if lzma is not None:
-        OPEN_METH["xzopen"] = "xzopen"
+        OPEN_METH["xz"] = "xzopen"
 
         @classmethod
         def xzopen(cls, name, mode="r", fileobj=None, preset=None, **kwargs):
