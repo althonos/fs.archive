@@ -67,7 +67,6 @@ Requirements
    :target: https://pypi.python.org/pypi/fs.proxy
 
 
-
 Installation
 ------------
 
@@ -75,18 +74,27 @@ Install directly from PyPI, using `pip <https://pip.pypa.io/>`_ ::
 
     pip install fs.archive
 
-Install the ``tar.xz`` extra to enforce support for tar archives compressed
-with `xz` ::
 
-    pip install fs.archive[tar.xz]
+``fs.archive`` also provides the following `extras
+<https://setuptools.readthedocs.io/en/latest/setuptools.html#declaring-extras-optional-features-with-their-own-dependencies>`_:
+
+*tar.xz*
+    support for ``xz`` compressed tar files. Requires the additional
+    `backports.lzma <https://pypi.python.org/pypi/backports.lzma>`_
+    module in Python 2, but is available natively in Python 3.
+
+*iso*
+    pure-python read-only support for ``ISO`` disk images (no extensions
+    supported). Requires the awesome `construct
+    <https://pypi.python.org/pypi/backports.lzma>`_ module.
 
 
 Usage
 -----
 
-The ``fs.archive.open_archive`` context manager is the easiest way to open an
-archive filesystem, with an archive located on any other filesystem, determining
-from the file extension the type to use :
+The ``fs.archive.open_archive`` function is the easiest way to open an
+archive filesystem, with an archive located on any other filesystem, directly
+determining the type to use from the file extension:
 
 .. code:: python
 
@@ -100,7 +108,7 @@ from the file extension the type to use :
 
 
 All the filesystems implemented in ``fs.archive`` also support reading and
-writing from and to a file handle a file handle:
+writing from and to a file handle:
 
 .. code:: python
 
@@ -113,17 +121,22 @@ writing from and to a file handle a file handle:
     True
 
 
+Abstract Base Classes
+---------------------
+
 ``fs.archive`` declares three abstract base classes in ``fs.archive.base``:
 
-* ``ArchiveSaver``: defines how an archive is saved (in essence, a class managing
-  the compression of a filesystem)
-* ``ArchiveReadFS``: a read-only filesystem that implements the methods required
-  to *read* the archive
-* ``ArchiveFS``: a `proxy <https://github.com/althonos/fs.proxy>`_ filesystem
-  used to make an archive seemingly writable
+``ArchiveSaver``
+    defines how an archive is saved (in essence, a class managing
+    the compression of a filesystem).
 
+``ArchiveReadFS``
+    a read-only filesystem that implements the methods required
+    to *read* the archive.
 
-
+``ArchiveFS``
+    a `proxy <https://github.com/althonos/fs.proxy>`_ filesystem
+    used to make an archive seemingly writable.
 
 
 See also
