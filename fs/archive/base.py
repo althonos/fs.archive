@@ -11,20 +11,12 @@ import shutil
 import tempfile
 
 from .. import errors
-
 from ..base import FS
 from ..proxy.writer import ProxyWriter
 from .._fscompat import fsdecode, fspath
 
-def _writable(handle):
-    if isinstance(handle, io.IOBase) and sys.version_info >= (3, 5):
-        return handle.writable()
-    try:
-        handle.write(b'')
-    except (io.UnsupportedOperation, OSError):
-        return False
-    else:
-        return True
+from ._utils import writable_stream, writable_path
+
 
 
 
@@ -155,7 +147,7 @@ class ArchiveReadFS(FS):
     def close(self):
         if not self.isclosed():
             if self._close_handle:
-                self._handle.close()
+                getattr(self._handle, 'close', lambda: None)()
             super(ArchiveReadFS, self).close()
 
 
@@ -185,7 +177,7 @@ class ArchiveFS(ProxyWriter):
                 options.setdefault('close_handle', True)
                 read_fs = self._read_fs_cls(handle, **options)
             # Create a saver only if the destination is writable
-            create_saver = os.access(_path, os.W_OK)
+            create_saver = writable_path(_path)
 
         elif hasattr(handle, 'read'):
             # Get the initial stream position
@@ -194,7 +186,7 @@ class ArchiveFS(ProxyWriter):
             if handle.readable() and handle.seekable():
                 read_fs = self._read_fs_cls(handle, **options)
             # Create a saver only if the destination is writable
-            create_saver = _writable(handle)
+            create_saver = writable_stream(handle)
 
         else:
             raise errors.CreateFailed("cannot use {}".format(handle))
