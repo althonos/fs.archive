@@ -29,20 +29,43 @@ def _writable(handle):
 
 @six.add_metaclass(abc.ABCMeta)
 class ArchiveSaver(object):
+    """Base class for archive serializers.
+    """
 
     def __init__(self, output, overwrite=False, initial_position=0, **options):
+        """Create a new serializer.
+
+        Parameters:
+            output (`io.IOBase` or `str`): the filename of the destination
+                or a file handle in which to write the archive.
+            overwrite (`boolean`): If True, use a temporary file to save
+                the contents of the archive. Useful when updating an archive
+                file. **[default: False]**
+            initial_position (`int`): The initial position of the stream when
+                it was seen for the first time. **[default: 0]**
+        """
         self.output = output
         self.overwrite = overwrite
         self.initial_position = initial_position
         self.stream = isinstance(output, io.IOBase)
 
     def save(self, fs):
+        """Save the given FS.
+
+        Parameters:
+            fs (`fs.base.FS`): the filesystem to save in the archive.
+        """
         if self.stream:
             self.to_stream(fs)
         else:
             self.to_file(fs)
 
     def to_file(self, fs):
+        """Save the given FS, considering ``self.output`` as a filename.
+
+        Parameters:
+            fs (`fs.base.FS`): the filesystem to save in the archive.
+        """
         if self.overwrite: # If we need to overwrite, use temporary file
             tmp = '.'.join([self.output, 'tmp'])
             self._to(tmp, fs)
@@ -51,6 +74,11 @@ class ArchiveSaver(object):
             self._to(self.output, fs)
 
     def to_stream(self, fs):
+        """Save the given FS, considering ``self.output`` as a stream.
+
+        Parameters:
+            fs (`fs.base.FS`): the filesystem to save in the archive.
+        """
         if self.overwrite: # If we need to overwrite, use temporary file
             fd, temp = tempfile.mkstemp()
             os.close(fd)
@@ -67,11 +95,20 @@ class ArchiveSaver(object):
 
     @abc.abstractmethod
     def _to(self, handle, fs):
+        """Save the given FS to the given stream handle.
+
+        Parameters:
+            handle (`io.IOBase`): a writable stream in which to write
+                the filesystem in an archive.
+            fs (`fs.base.FS`): the filesystem to save.
+        """
         raise NotImplementedError()
 
 
 @six.add_metaclass(abc.ABCMeta)
 class ArchiveReadFS(FS):
+    """A filesystem allowing to read an archive.
+    """
 
     def __init__(self, handle, **options):
         super(ArchiveReadFS, self).__init__()
@@ -116,6 +153,8 @@ class ArchiveReadFS(FS):
 
 @six.add_metaclass(abc.ABCMeta)
 class ArchiveFS(ProxyWriter):
+    """A proxy filesystem allowing to read, write and update an archive.
+    """
     _read_fs_cls = ArchiveReadFS
     _saver_cls = ArchiveSaver
 
