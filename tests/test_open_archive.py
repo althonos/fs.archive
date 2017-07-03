@@ -2,8 +2,8 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import six
 import gzip
-import lzma
 import zipfile
 import tarfile
 import unittest
@@ -66,35 +66,8 @@ class TestOpenArchive(unittest.TestCase):
         self._test_tar('mytar.tar.gz', gzip.GzipFile, 'gzopen')
         self._test_tar('mytar.tgz', gzip.GzipFile, 'gzopen')
 
+    @unittest.skipIf(six.PY2, 'lzma not supported in Python 2')
     def test_tar_xz(self):
+        import lzma
         self._test_tar('mytar.tar.xz', lzma.LZMAFile, 'xzopen')
         self._test_tar('mytar.txz', lzma.LZMAFile, 'xzopen')
-
-
-
-    def test_tar_xz(self):
-
-        mem = fs.open_fs('mem://')
-
-        # Check we can write
-        with fs.archive.open_archive(mem, 'mytar.tar.xz') as archive:
-            print(archive._saver.compression)
-            self.assertIsInstance(archive, fs.archive.tarfs.TarFS)
-            archive.settext('abc.txt', 'abc')
-            archive.makedir('dir')
-
-        # Check the dumped archive is a gzipped file
-        with mem.openbin('mytar.tar.xz') as mytar:
-            xz = lzma.LZMAFile(mytar)
-            print(xz.read())
-
-        # Check we can open it normally
-        with mem.openbin('mytar.tar.xz') as mytar:
-            tar = tarfile.TarFile.xzopen('mytar.tar.xz', fileobj=mytar)
-        with mem.openbin('mytar.tar.xz') as mytar:
-            tar = tarfile.TarFile.open('mytar.tar.xz', fileobj=mytar)
-
-        # Check we can read it with the TarFS
-        with fs.archive.open_archive(mem, 'mytar.tar.xz') as archive:
-            self.assertEqual(sorted(archive.listdir('/')), ['abc.txt', 'dir'])
-            self.assertEqual(archive.gettext('abc.txt'), 'abc')
