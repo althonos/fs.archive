@@ -52,6 +52,7 @@ class ArchiveReadTestCases(object):
         self.compress(self.handle, source_fs)
         self.handle.seek(0)
         self.fs = self._archive_read_fs(self.handle)
+        print(self._archive_read_fs, self.fs, self.fs.getmeta())
 
         self.assertIsInstance(
             self.fs, base.ArchiveReadFS,
@@ -87,8 +88,8 @@ class ArchiveReadTestCases(object):
             _ = next(self.fs.scandir('top.txt'))
 
     def test_readonly(self):
-        if not self.fs.getmeta().get('read_only', False):
-            self.skipTest("Filesystem is not read-only")
+        self.assertTrue(self.fs.getmeta().get('read_only'),
+                        'Filesystem is not read-only.')
 
         with self.assertRaises(errors.ResourceReadOnly):
             self.fs.makedir('newdir')

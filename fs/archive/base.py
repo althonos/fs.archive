@@ -105,6 +105,11 @@ class ArchiveReadFS(FS):
         self.check()
         self._on_modification_attempt(path)
 
+    def getmeta(self, namespace="standard"):
+        if namespace == "standard":
+            return self._meta.copy()
+        return {}
+
 
 @six.add_metaclass(abc.ABCMeta)
 class ArchiveFS(ProxyWriter):
