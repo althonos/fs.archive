@@ -33,6 +33,7 @@ class ArchiveReadTestCases(object):
     def remove_archive(self, handle):
         pass
 
+
     def make_source_fs(self):
         return open_fs('temp://')
 
@@ -62,6 +63,14 @@ class ArchiveReadTestCases(object):
         self.source_fs.close()
         self.fs.close()
         self.remove_archive(self.handle)
+
+    def test_create_failed(self):
+        handle = six.moves.BytesIO()
+        handle.write('a'*100+'z'*100)
+        handle.seek(0)
+
+        with self.assertRaises(errors.CreateFailed):
+            self._archive_read_fs(handle)
 
     def test_repr(self):
         repr(self.fs)

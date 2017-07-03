@@ -29,12 +29,6 @@ if six.PY2:
 
     class TarFile(tarfile.TarFile):
 
-        OPEN_METH = {
-            "tar": "taropen",   # uncompressed tar
-            "gz":  "gzopen",    # gzip compressed tar
-            "bz2": "bz2open",   # bzip2 compressed tar
-        }
-
         if lzma is not None:
             OPEN_METH = {
                 "tar": "taropen",   # uncompressed tar
