@@ -88,8 +88,8 @@ from the file extension the type to use :
     >>> from fs import open_fs
     >>> from fs.archive import open_archive
 
-    >>> my_fs = open_fs('temp://')
-    >>> with open_archive(my_fs, 'test.zip') as archive:
+    >>> my_fs = open_fs(u'temp://')
+    >>> with open_archive(my_fs, u'test.zip') as archive:
     ...     type(archive)
     <class 'fs.archive.zipfs.ZipFS'>
 
@@ -107,11 +107,11 @@ writing from and to a file handle a file handle:
 .. code:: python
 
     >>> import fs.archive.tarfs
-    >>> with fs.open_fs('mem://') as mem:
-    ...     with fs.archive.tarfs.TarFS(mem.openbin('test.tar', 'w')) as tar:
-    ...         tar.setbytes('hello', b'Hello, World!')
-    ...     with fs.archive.tarfs.TarFS(mem.openbin('test.tar', 'r+')) as tar:
-    ...         tar.getbytes('hello')
+    >>> with fs.open_fs(u'mem://') as mem:
+    ...     with fs.archive.tarfs.TarFS(mem.openbin(u'test.tar', 'w')) as tar:
+    ...         tar.setbytes(u'hello', b'Hello, World!')
+    ...     with fs.archive.tarfs.TarFS(mem.openbin(u'test.tar', 'r+')) as tar:
+    ...         tar.getbytes(u'hello')
     b'Hello, World!'
 
 
