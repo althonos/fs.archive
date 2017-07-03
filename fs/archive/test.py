@@ -52,7 +52,6 @@ class ArchiveReadTestCases(object):
         self.compress(self.handle, source_fs)
         self.handle.seek(0)
         self.fs = self._archive_read_fs(self.handle)
-        print(self._archive_read_fs, self.fs, self.fs.getmeta())
 
         self.assertIsInstance(
             self.fs, base.ArchiveReadFS,
