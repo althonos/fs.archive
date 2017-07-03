@@ -26,7 +26,10 @@ def open_archive(fs_url, archive):
     try:
         fs = open_fs(fs_url)
         binfile = fs.openbin(archive, 'r+' if fs.isfile(archive) else 'w')
-        binfile.name = basename(archive)
+
+        if not hasattr(binfile, 'name'):
+            binfile.name = basename(archive)
+
         archive_fs = archive_opener(binfile)
         yield archive_fs
     finally:
