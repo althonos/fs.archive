@@ -48,7 +48,7 @@ class TestOpenArchive(unittest.TestCase):
 
         # Check the dumped archive is a gzipped file
         with mem.openbin(filename) as mytar:
-            arc = arcfile(fileobj=mytar)
+            arc = arcfile(mytar)
             arc.read()
 
         # Check we can open it normally
@@ -63,11 +63,22 @@ class TestOpenArchive(unittest.TestCase):
             self.assertEqual(archive.gettext('abc.txt'), 'abc')
 
     def test_tar_gz(self):
-        self._test_tar('mytar.tar.gz', gzip.GzipFile, 'gzopen')
-        self._test_tar('mytar.tgz', gzip.GzipFile, 'gzopen')
+        arc_gz = lambda fileobj: gzip.GzipFile(fileobj=fileobj)
+        self._test_tar('mytar.tar.gz', arc_gz, 'gzopen')
+        self._test_tar('mytar.tgz', arc_gz, 'gzopen')
 
     @unittest.skipIf(six.PY2, 'lzma not supported in Python 2')
     def test_tar_xz(self):
         import lzma
-        self._test_tar('mytar.tar.xz', lzma.LZMAFile, 'xzopen')
-        self._test_tar('mytar.txz', lzma.LZMAFile, 'xzopen')
+        arc_lz = lambda fileobj: lzma.LZMAFile(fileobj)
+        self._test_tar('mytar.tar.xz', arc_lz, 'xzopen')
+        self._test_tar('mytar.txz', arc_lz, 'xzopen')
+
+    @unittest.skipIf(six.PY3, 'lzma not supported in Python 2 only')
+    def test_tar_xz_missing(self):
+        with self.assertRaises(errors.Unsupported):
+            with fs.archive.open_archive('mem://', 'archive.tar.xz'):
+                pass
+        with self.assertRaises(errors.Unsupported):
+            with fs.archive.open_archive('mem://', 'archive.txz'):
+                pass

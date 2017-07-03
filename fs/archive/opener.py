@@ -12,6 +12,10 @@ from ..path import basename
 @contextlib.contextmanager
 def open_archive(fs_url, archive):
 
+    if archive.endswith(('tar.xz', '.txz')) and six.PY2:
+        raise Unsupported(
+            'xz compression is not supported on Python 2')
+
     it = iter_entry_points('fs.archive.open_archive')
     entry_point = next((ep for ep in it if archive.endswith(ep.name)), None)
 
@@ -32,6 +36,8 @@ def open_archive(fs_url, archive):
 
         archive_fs = archive_opener(binfile)
         yield archive_fs
+    except Exception:
+        raise
     finally:
         archive_fs.close()
         binfile.close()
