@@ -14,6 +14,7 @@ from .. import errors
 
 from ..base import FS
 from ..proxy.writer import ProxyWriter
+from .._fscompat import fsdecode, fspath
 
 def _writable(handle):
     if isinstance(handle, io.IOBase) and sys.version_info >= (3, 5):
@@ -113,6 +114,7 @@ class ArchiveReadFS(FS):
     def __init__(self, handle, **options):
         super(ArchiveReadFS, self).__init__()
         self._handle = handle
+        self._close_handle = options.get('close_handle', True)
 
     def __repr__(self):
         return "{}({!r})".format(
@@ -150,6 +152,12 @@ class ArchiveReadFS(FS):
             return self._meta.copy()
         return {}
 
+    def close(self):
+        if not self.isclosed():
+            if self._close_handle:
+                self._handle.close()
+            super(ArchiveReadFS, self).close()
+
 
 @six.add_metaclass(abc.ABCMeta)
 class ArchiveFS(ProxyWriter):
@@ -161,30 +169,41 @@ class ArchiveFS(ProxyWriter):
     def __init__(self, handle, proxy=None, **options):
 
         initial_position = 0
+        read_fs = None
+        self._saver = None
 
         if isinstance(handle, six.binary_type):
-            handle = handle.decode('utf-8')
+            # Decode the path if it is in binary format
+            handle = fsdecode(fspath(handle))
 
         if isinstance(handle, six.text_type):
-            create_saver = True
-            read_only = self._read_fs_cls(handle, **options) \
-                        if os.path.exists(handle) else None
+            # Expand the path
+            _path = os.path.expanduser(os.path.expandvars(handle))
+            _path = os.path.normpath(os.path.abspath(_path))
+            # Create the readable fs if the handle exists
+            if os.path.exists(_path) and os.access(_path, os.R_OK):
+                options.setdefault('close_handle', True)
+                read_fs = self._read_fs_cls(handle, **options)
+            # Create a saver only if the destination is writable
+            create_saver = os.access(_path, os.W_OK)
 
         elif hasattr(handle, 'read'):
-            create_saver = _writable(handle)
+            # Get the initial stream position
             initial_position = getattr(handle, 'tell', lambda: 0)()
-            read_only = self._read_fs_cls(handle, **options) \
-                        if handle.readable() and handle.seekable() \
-                        else None
+            # Create the readable fs if the handle is readable
+            if handle.readable() and handle.seekable():
+                read_fs = self._read_fs_cls(handle, **options)
+            # Create a saver only if the destination is writable
+            create_saver = _writable(handle)
 
         else:
             raise errors.CreateFailed("cannot use {}".format(handle))
 
         overwrite = read_only is not None
-        self._saver = self._saver_cls(handle, overwrite, initial_position) \
-                      if create_saver else None
+        if create_saver:
+            self._saver = self._saver_cls(handle, overwrite, initial_position)
 
-        super(ArchiveFS, self).__init__(read_only, proxy)
+        super(ArchiveFS, self).__init__(read_fs, proxy)
 
     def close(self):
         if not self.isclosed():
