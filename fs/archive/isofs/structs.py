@@ -6,8 +6,8 @@
 from __future__ import unicode_literals
 from __future__ import division
 
-import datetime
 import pytz
+import datetime
 
 from construct import *
 
@@ -46,9 +46,7 @@ class DescDateTimeAdapter(Adapter):
             int(obj['minute']),
             int(obj['second']),
             int(obj['hundredths']) * 10000,
-            #tzinfo = pytz.FixedOffset(int(obj['gmt_offset'])*15)
-            tzinfo=datetime.timezone(
-                datetime.timedelta(minutes=int(obj['gmt_offset'])*15)),
+            tzinfo = pytz.FixedOffset(int(obj['gmt_offset'])*15)
         )
 
     def _encode(self, obj, context):
@@ -79,8 +77,7 @@ class DirDateTimeAdapter(Adapter):
             int(obj['hour']),
             int(obj['minute']),
             int(obj['second']),
-            tzinfo=datetime.timezone(
-                datetime.timedelta(minutes=int(obj['gmt_offset'])*15)),
+            tzinfo = pytz.FixedOffset(int(obj['gmt_offset'])*15)
         )
 
     def _encode(self, obj, context):
