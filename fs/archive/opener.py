@@ -55,7 +55,7 @@ def open_archive(fs_url, archive):
 
     try:
         archive_opener = entry_point.load()
-    except pkg_resources.DistributionNotFound as df:
+    except pkg_resources.DistributionNotFound as df: # pragma: no cover
         six.raise_from(Unsupported(
             'extension {} requires {}'.format(entry_point.name, df.req)), None)
 
@@ -87,6 +87,7 @@ def open_archive(fs_url, archive):
     except Exception:
         getattr(archive_fs, 'close', lambda: None)()
         getattr(binfile, 'close', lambda: None)()
+        raise
 
     else:
         return archive_fs

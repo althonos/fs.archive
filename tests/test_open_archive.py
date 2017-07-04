@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import os
 import six
 import gzip
 import zipfile
@@ -9,18 +10,16 @@ import tarfile
 import unittest
 import pkg_resources
 
-try:
-    import lzma
-except ImportError:
-    try:
-        from backports import lzma
-    except ImportError:
-        lzma = None
-
 import fs.archive
+
+from fs.wrap import WrapReadOnly
+from fs.opener import _errors as errors
 from fs.archive.zipfs import ZipFS
 from fs.archive.tarfs import TarFS, TarFile
-from fs.opener import _errors as errors
+from fs.archive.isofs import ISOReadFS
+from fs.archive._utils import import_from_names
+
+lzma = import_from_names('lzma', 'backports.lzma')
 
 
 class TestOpenArchive(unittest.TestCase):
@@ -32,12 +31,23 @@ class TestOpenArchive(unittest.TestCase):
             with fs.archive.open_archive('mem://', 'not-an-archive.txt'):
                 pass
 
+    def test_open_read_only(self):
+        mem = fs.open_fs('mem://')
+        with fs.archive.open_archive(mem, 'myzip.zip') as archive:
+            self.assertIsInstance(archive, fs.archive.zipfs.ZipFS)
+            archive.settext('abc.txt', 'abc')
+            archive.makedir('dir')
+
+        mem = WrapReadOnly(mem)
+        with fs.archive.open_archive(mem, 'myzip.zip') as archive:
+            self.assertIsInstance(archive, fs.archive.zipfs.ZipReadFS)
+
     def test_zip(self):
         """Check ``*.zip`` files are opened in `ZipFS` filesystems.
         """
         mem = fs.open_fs('mem://')
         with fs.archive.open_archive(mem, 'myzip.zip') as archive:
-            self.assertIsInstance(archive, fs.archive.zipfs.ZipFS)
+            self.assertIsInstance(archive, ZipFS)
             archive.settext('abc.txt', 'abc')
             archive.makedir('dir')
 
@@ -99,3 +109,16 @@ class TestOpenArchive(unittest.TestCase):
         with self.assertRaises(errors.Unsupported):
             with fs.archive.open_archive('mem://', 'archive.txz'):
                 pass
+
+    def test_iso(self):
+
+        test_dir = os.path.dirname(os.path.abspath(__file__))
+        resources_dir = os.path.join(test_dir, 'resources')
+
+        with fs.open_fs(resources_dir) as resources_fs:
+            try:
+                with fs.archive.open_archive(resources_fs, 'test.iso') as iso_fs:
+                    self.assertIsInstance(iso_fs, ISOReadFS)
+                    self.assertFalse(iso_fs._handle.writable())
+            except errors.Unsupported:
+                self.skipTest('iso support is not enabled')
