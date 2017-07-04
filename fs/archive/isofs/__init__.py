@@ -216,6 +216,8 @@ class ISOReadFS(base.ArchiveReadFS):
             info['details'] = {
                 'size': record['Data Length'],
             }
+        if 'iso' in namespaces:
+            info['iso'] = dict(record)
 
         return Info(info)
 
