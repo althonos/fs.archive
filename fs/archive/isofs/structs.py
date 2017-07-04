@@ -7,27 +7,28 @@ from __future__ import unicode_literals
 from __future__ import division
 
 import datetime
+import pytz
 
 from construct import *
 
 
 class BothEndian(Construct):
 
-    def __init__(self, le, be):
+    def __init__(self, first, last):
         super(BothEndian, self).__init__()
-        self.le = le
-        self.be = be
+        self.first = first
+        self.last = last
 
     def _parse(self, stream, context, path):
-        le_value = self.le.parse_stream(stream)
-        re_value = self.be.parse_stream(stream)
-        if le_value != re_value:
+        first_value = self.first.parse_stream(stream)
+        last_value = self.last.parse_stream(stream)
+        if first_value != last_value:
             raise FieldError("Little- and big-endian values differ.")
-        return le_value
+        return first_value
 
     def _build(self, obj, stream, context, path):
-        stream.write(self.le.build(obj))
-        stream.write(self.be.build(obj))
+        stream.write(self.first.build(obj))
+        stream.write(self.last.build(obj))
 
 
 class DescDateTimeAdapter(Adapter):
@@ -45,8 +46,9 @@ class DescDateTimeAdapter(Adapter):
             int(obj['minute']),
             int(obj['second']),
             int(obj['hundredths']) * 10000,
+            #tzinfo = pytz.FixedOffset(int(obj['gmt_offset'])*15)
             tzinfo=datetime.timezone(
-                datetime.timedelta(int(obj['gmt_offset'])*15)),
+                datetime.timedelta(minutes=int(obj['gmt_offset'])*15)),
         )
 
     def _encode(self, obj, context):
@@ -70,7 +72,6 @@ class DescDateTimeAdapter(Adapter):
 class DirDateTimeAdapter(Adapter):
 
     def _decode(self, obj, context):
-
         return datetime.datetime(
             int(obj['year_offset']) + 1900,
             int(obj['month']),
@@ -79,7 +80,7 @@ class DirDateTimeAdapter(Adapter):
             int(obj['minute']),
             int(obj['second']),
             tzinfo=datetime.timezone(
-                datetime.timedelta(int(obj['gmt_offset'])*15)),
+                datetime.timedelta(minutes=int(obj['gmt_offset'])*15)),
         )
 
     def _encode(self, obj, context):
@@ -102,7 +103,7 @@ DescDateTime = Struct(
     "minute"     / Bytes(2),
     "second"     / Bytes(2),
     "hundredths" / Bytes(2),
-    "gmt_offset" / Int8un,
+    "gmt_offset" / Int8sn,
 )
 
 DirDateTime = Struct(
@@ -112,7 +113,7 @@ DirDateTime = Struct(
     "hour" / Int8un,
     "minute" / Int8un,
     "second" / Int8un,
-    "gmt_offset" / Int8un,
+    "gmt_offset" / Int8sn,
 )
 
 DirectoryRecord = Struct(
