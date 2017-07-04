@@ -1,4 +1,11 @@
 # coding: utf-8
+"""Base classes to test archive filesystems.
+
+Adapted from the core Pyfilesystem2 test module `test_archives.py
+<https://github.com/PyFilesystem/pyfilesystem2/blob/master/tests/test_archives.py>`_
+written by `Will McGugan <https://github.com/willmcgugan>`_ under the **MIT**
+license.
+"""
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
@@ -20,24 +27,35 @@ from . import base
 
 @six.add_metaclass(abc.ABCMeta)
 class ArchiveReadTestCases(object):
+    """Base class to test ArchiveReadFS subclasses.
+    """
 
     @abc.abstractproperty
     def _archive_read_fs(self):
+        """The ArchiveReadFS class to test.
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
     def compress(self, handle, fs):
+        """Compress ``fs`` and write the resulting archive to ``handle``.
+        """
         pass
 
     @abc.abstractmethod
     def remove_archive(self, handle):
+        """Remove the archive in ``handle``
+        """
         pass
 
-
     def make_source_fs(self):
+        """Create the source filesystem.
+        """
         return open_fs('temp://')
 
     def build_source(self, fs):
+        """Create the test structure in the source filesystem.
+        """
         fs.makedirs('foo/bar/baz')
         fs.makedir('tmp')
         fs.settext('top.txt', 'Hello, World')
@@ -65,6 +83,8 @@ class ArchiveReadTestCases(object):
         self.remove_archive(self.handle)
 
     def test_create_failed(self):
+        """Check CreateFailed is on rubbish input stream.
+        """
         handle = six.moves.BytesIO()
         handle.write('a'*100+'z'*100)
         handle.seek(0)
@@ -73,12 +93,18 @@ class ArchiveReadTestCases(object):
             self._archive_read_fs(handle)
 
     def test_repr(self):
+        """Check that `__repr__` doesn't raise any error.
+        """
         repr(self.fs)
 
     def test_str(self):
+        """Check that `__str__` can be coerced to `six.text_type`.
+        """
         self.assertIsInstance(six.text_type(self.fs), six.text_type)
 
     def test_scandir(self):
+        """Check that `fs.base.FS.scandir` has the expected behaviour.
+        """
 
         dirsize = self.fs.getdetails('foo').size
         if dirsize is None:
@@ -96,6 +122,8 @@ class ArchiveReadTestCases(object):
             _ = next(self.fs.scandir('top.txt'))
 
     def test_readonly(self):
+        """Check that read-only filesystems raise an error on edit attempts.
+        """
         self.assertTrue(self.fs.getmeta().get('read_only'),
                         'Filesystem is not read-only.')
 
@@ -111,6 +139,8 @@ class ArchiveReadTestCases(object):
             self.fs.setinfo('foo.txt', {})
 
     def test_getinfo(self):
+        """Check that `fs.base.FS.getinfo` has the expected behaviour.
+        """
         root = self.fs.getinfo('/')
         self.assertEqual(root.name, '')
         self.assertTrue(root.is_dir)
@@ -123,6 +153,8 @@ class ArchiveReadTestCases(object):
             _ = self.fs.getinfo('boom.txt')
 
     def test_listdir(self):
+        """Check that `fs.base.FS.listdir` has the expected behaviour.
+        """
         self.assertEqual(
             sorted(self.source_fs.listdir('/')),
             sorted(self.fs.listdir('/'))
@@ -133,6 +165,8 @@ class ArchiveReadTestCases(object):
             self.fs.listdir('nothere')
 
     def test_open(self):
+        """Check that `fs.base.FS.open` has the expected behaviour.
+        """
         with self.fs.open('top.txt') as f:
             chars = []
             while True:
@@ -152,18 +186,24 @@ class ArchiveReadTestCases(object):
                 pass
 
     def test_gettext(self):
+        """Check that `fs.base.FS.gettext` has the expected behaviour.
+        """
         self.assertEqual(self.fs.gettext('top.txt'), 'Hello, World')
         self.assertEqual(self.fs.gettext('foo/bar/egg'), 'foofoo')
         self.assertRaises(errors.ResourceNotFound, self.fs.getbytes, 'what.txt')
         self.assertRaises(errors.FileExpected, self.fs.gettext, 'foo')
 
     def test_getbytes(self):
+        """Check that `fs.base.FS.getbytes` has the expected behaviour.
+        """
         self.assertEqual(self.fs.getbytes('top.txt'), b'Hello, World')
         self.assertEqual(self.fs.getbytes('foo/bar/egg'), b'foofoo')
         self.assertRaises(errors.ResourceNotFound, self.fs.gettext, 'what.txt')
         self.assertRaises(errors.FileExpected, self.fs.getbytes, 'foo')
 
     def test_walk_files(self):
+        """Check that `fs.base.FS.walk.files` has the expected behaviour.
+        """
         source_files = sorted(walk.walk_files(self.source_fs))
         archive_files = sorted(walk.walk_files(self.fs))
 
@@ -173,6 +213,8 @@ class ArchiveReadTestCases(object):
         )
 
     def test_implied_dir(self):
+        """Check that implied directories are accessible from archives.
+        """
         self.fs.getinfo('foo/bar')
         self.fs.getinfo('foo')
 
@@ -180,6 +222,8 @@ class ArchiveReadTestCases(object):
 
 @six.add_metaclass(abc.ABCMeta)
 class ArchiveIOTestCases(object):
+    """Base class to test ArchiveFS subclasses openers.
+    """
 
     @classmethod
     def setUpClass(cls):
@@ -191,18 +235,26 @@ class ArchiveIOTestCases(object):
 
     @abc.abstractproperty
     def _archive_fs(self):
+        """The ArchiveFS class to test.
+        """
         raise NotImplementedError()
 
     @abc.abstractmethod
     def compress(self, handle, fs):
+        """Compress ``fs`` and write the resulting archive to ``handle``.
+        """
         raise NotImplementedError()
 
     @abc.abstractmethod
     def iter_files(self, handle):
+        """Return an iterator over the files in the archive in ``handle``.
+        """
         raise NotImplementedError()
 
     @abc.abstractmethod
     def iter_dirs(self, handle):
+        """Return an iterator over the directories in the archive in ``handle``.
+        """
         raise NotImplementedError()
 
     def tearDown(self):
@@ -212,6 +264,8 @@ class ArchiveIOTestCases(object):
             self.handle.close()
 
     def build_source(self, fs):
+        """Create the test structure in the source filesystem.
+        """
         fs.settext('foo.txt', 'Hello World !')
         fs.makedir('baz')
         fs.settext('baz/bar.txt', 'Savy ?')
@@ -227,6 +281,8 @@ class ArchiveIOTestCases(object):
         return handle
 
     def make_source_fs(self):
+        """Create the source filesystem.
+        """
         return open_fs('temp://')
 
     def _test_read(self, fs):
@@ -254,6 +310,8 @@ class ArchiveIOTestCases(object):
         self.assertFalse(fs.isdir('egg') or fs.exists('egg'))
 
     def test_read_stream(self):
+        """Check archives can be read from a stream.
+        """
         stream = self.make_archive(io.BytesIO())
         with self._archive_fs(io.BufferedReader(stream), close_handle=False) as archive_fs:
             self._test_read(archive_fs)
@@ -268,6 +326,8 @@ class ArchiveIOTestCases(object):
         )
 
     def test_read_write_stream(self):
+        """Check archives can be updated from and to a stream.
+        """
         stream = self.make_archive(io.BytesIO())
         with self._archive_fs(stream, close_handle=False) as archive_fs:
             self._test_read_write(archive_fs)
@@ -282,6 +342,8 @@ class ArchiveIOTestCases(object):
         )
 
     def test_write_stream(self):
+        """Check archives can be written to a stream.
+        """
         stream = io.BytesIO()
         stream.readable = lambda: False   # mock a write-only stream
         with self._archive_fs(stream, close_handle=False) as zipfs:
@@ -297,6 +359,8 @@ class ArchiveIOTestCases(object):
         )
 
     def test_read_file(self):
+        """Check archives can be read from a file.
+        """
         filename = os.path.join(self.tempdir, 'read')
         with self._archive_fs(self.make_archive(filename)) as zipfs:
             self._test_read(zipfs)
@@ -311,6 +375,8 @@ class ArchiveIOTestCases(object):
         )
 
     def test_read_write_file(self):
+        """Check archives can be updated from and to a stream.
+        """
         filename = os.path.join(self.tempdir, 'write')
         with self._archive_fs(self.make_archive(filename)) as zipfs:
             self._test_read_write(zipfs)
@@ -325,6 +391,8 @@ class ArchiveIOTestCases(object):
         )
 
     def test_write_file(self):
+        """Check archives can be writtent to a stream.
+        """
         filename = os.path.join(self.tempdir, 'read_write')
         with self._archive_fs(filename) as zipfs:
             self._test_write(zipfs)
@@ -340,6 +408,8 @@ class ArchiveIOTestCases(object):
         )
 
     def test_iter_dirs(self):
+        """Check the `iter_dirs` method works as intented.
+        """
         handle = self.make_archive(io.BytesIO())
 
         self.assertEqual(
@@ -348,6 +418,8 @@ class ArchiveIOTestCases(object):
         )
 
     def test_iter_files(self):
+        """Check the `iter_files` method works as intented.
+        """
         handle = self.make_archive(io.BytesIO())
 
         self.assertEqual(

@@ -1,4 +1,6 @@
 # coding: utf-8
+"""Declaration of the `open_archive` function.
+"""
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
@@ -14,6 +16,35 @@ from . import base
 
 
 def open_archive(fs_url, archive):
+    """Open an archive on a filesystem.
+
+    This function tries to mimick the behaviour of `fs.open_fs` as closely
+    as possible: it accepts either a FS URL or a filesystem instance, and
+    will close all resources it had to open.
+
+    Arguments:
+        fs_url (`six.text_type` or `fs.base.FS`): a FS URL, or a filesystem
+            instance, where the archive file is located.
+        archive (`six.text_type`): the path to the archive file on the
+            given filesystem.
+
+    Raises:
+        `fs.opener._errors.Unsupported`: when the archive type is not supported
+            (either the file extension is unknown or the opener requires unmet
+            dependencies).
+
+    Example:
+        >>> from fs.archive import open_archive
+        >>> with open_archive('mem://', 'test.tar.gz') as archive_fs:
+        ...     type(archive_fs)
+        <class 'fs.archive.tarfs.TarFS'>
+
+    Hint:
+        This function finds the entry points defined in group
+        ``fs.archive.open_archive``, using the names of the entry point
+        as the registered extension.
+
+    """
 
     it = pkg_resources.iter_entry_points('fs.archive.open_archive')
     entry_point = next((ep for ep in it if archive.endswith(ep.name)), None)

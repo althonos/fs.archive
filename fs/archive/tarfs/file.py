@@ -1,4 +1,6 @@
 # coding: utf-8
+"""`tarfile.TarFile` subclass overloaded with additional compression openers.
+"""
 from __future__ import absolute_import
 from __future__ import unicode_literals
 

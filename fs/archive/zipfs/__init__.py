@@ -1,4 +1,6 @@
 # coding: utf-8
+"""Zip archive filesystems.
+"""
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
@@ -20,8 +22,6 @@ from ...enums import ResourceType
 from ...iotools import RawWrapper
 
 from .. import base
-
-
 
 
 class ZipReadFS(base.ArchiveReadFS):

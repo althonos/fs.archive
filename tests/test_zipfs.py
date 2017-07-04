@@ -20,7 +20,6 @@ from fs.path import relpath, join, forcedir, abspath, recursepath
 from fs.archive.test import ArchiveReadTestCases, ArchiveIOTestCases
 
 
-
 def zip_compress(handle, source_fs):
     if hasattr(handle, 'seek') and handle.seekable():
         handle.seek(0)

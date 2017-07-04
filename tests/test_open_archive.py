@@ -26,11 +26,15 @@ from fs.opener import _errors as errors
 class TestOpenArchive(unittest.TestCase):
 
     def test_open_unknown_archive(self):
+        """Check opening an unknown archive type raises `Unsupported`.
+        """
         with self.assertRaises(errors.Unsupported):
             with fs.archive.open_archive('mem://', 'not-an-archive.txt'):
                 pass
 
     def test_zip(self):
+        """Check ``*.zip`` files are opened in `ZipFS` filesystems.
+        """
         mem = fs.open_fs('mem://')
         with fs.archive.open_archive(mem, 'myzip.zip') as archive:
             self.assertIsInstance(archive, fs.archive.zipfs.ZipFS)
@@ -71,18 +75,24 @@ class TestOpenArchive(unittest.TestCase):
             self.assertEqual(archive.gettext('abc.txt'), 'abc')
 
     def test_tar_gz(self):
+        """Check ``*.tar.gz`` files are opened in `TarFS` filesystems.
+        """
         arc_gz = lambda fileobj: gzip.GzipFile(fileobj=fileobj)
         self._test_tar('mytar.tar.gz', arc_gz, 'gzopen')
         self._test_tar('mytar.tgz', arc_gz, 'gzopen')
 
     @unittest.skipIf(lzma is None, 'lzma module is not installed')
     def test_tar_xz(self):
+        """Check ``*.tar.xz`` files are opened in `TarFS` filesystems.
+        """
         arc_lz = lambda fileobj: lzma.LZMAFile(fileobj)
         self._test_tar('mytar.tar.xz', arc_lz, 'xzopen')
         self._test_tar('mytar.txz', arc_lz, 'xzopen')
 
     @unittest.skipUnless(lzma is None, 'lzma module is installed')
     def test_tar_no_xz(self):
+        """Check opening ``*.tar.xz`` raises `Unsupported` on missing extras.
+        """
         with self.assertRaises(errors.Unsupported):
             with fs.archive.open_archive('mem://', 'archive.tar.xz'):
                 pass

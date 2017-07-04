@@ -104,6 +104,16 @@ class ArchiveReadFS(FS):
     """
 
     def __init__(self, handle, **options):
+        """Create a new archive reader filesystem.
+
+        Parameters:
+            handle (`io.IOBase` or `str`): a filename or a readable
+                file-like object storing the archive to read
+
+        Keyword Arguments:
+            close_handle (`boolean`): if ``True``, close the handle
+                when the filesystem is closed. **[default: True]**
+        """
         super(ArchiveReadFS, self).__init__()
         self._handle = handle
         self._close_handle = options.get('close_handle', True)
@@ -121,6 +131,8 @@ class ArchiveReadFS(FS):
         )
 
     def _on_modification_attempt(self, path):
+        """Called when a modification is attempted on the archive.
+        """
         raise errors.ResourceReadOnly(path)
 
     def setinfo(self, path, info):
@@ -159,6 +171,18 @@ class ArchiveFS(ProxyWriter):
     _saver_cls = ArchiveSaver
 
     def __init__(self, handle, proxy=None, **options):
+        """Create a new archive filesystem.
+
+        Parameters:
+            handle (`io.IOBase` or `str`): a filename or a stream storing an
+                archive and/or in which to write the updated archive.
+            proxy (`fs.base.FS`): the filesystem to use as a proxy. Leave
+                to ``None`` to use the default defined in `fs.proxy.writer`.
+
+        Keyword Arguments:
+            close_handle (`boolean`): if ``True``, close the handle
+                when the filesystem is closed. **[default: True]**
+        """
 
         initial_position = 0
         read_fs = None

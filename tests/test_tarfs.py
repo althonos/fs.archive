@@ -25,6 +25,7 @@ def tar_compress(handle, source_fs):
         handle.seek(0)
     saver = fs.archive.tarfs.TarSaver(handle, False)
     saver.save(source_fs)
+    
 
 class TestTarFS(fs.test.FSTestCases, unittest.TestCase):
 
