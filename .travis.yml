@@ -21,7 +21,7 @@ before_install:
 - pip install https://github.com/Pyfilesystem/pyfilesystem2/archive/master.zip # until feat-iobase is released
 
 install:
-- pip install '.[tar.xz]'
+- pip install '.[all]'
 
 script:
 - python setup.py test
