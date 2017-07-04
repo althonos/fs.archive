@@ -74,9 +74,14 @@ Install directly from PyPI, using `pip <https://pip.pypa.io/>`_ ::
 
     pip install fs.archive
 
+Extras
+^^^^^^
 
 ``fs.archive`` also provides the following `extras
 <https://setuptools.readthedocs.io/en/latest/setuptools.html#declaring-extras-optional-features-with-their-own-dependencies>`_:
+
+*all*
+    install all the extras listed below.
 
 *tar.xz*
     support for ``xz`` compressed tar files. Requires the additional
@@ -94,7 +99,7 @@ Usage
 
 The ``fs.archive.open_archive`` function is the easiest way to open an
 archive filesystem, with an archive located on any other filesystem, directly
-determining the type to use from the file extension:
+determining the class to use from the file extension:
 
 .. code:: python
 
@@ -107,8 +112,8 @@ determining the type to use from the file extension:
     <class 'fs.archive.zipfs.ZipFS'>
 
 
-All the filesystems implemented in ``fs.archive`` also support reading and
-writing from and to a file handle:
+All the filesystems implemented in ``fs.archive`` also support reading from
+— and if not read-only, writing to — a file handle:
 
 .. code:: python
 
@@ -121,22 +126,22 @@ writing from and to a file handle:
     True
 
 
-Abstract Base Classes
----------------------
-
-``fs.archive`` declares three abstract base classes in ``fs.archive.base``:
-
-``ArchiveSaver``
-    defines how an archive is saved (in essence, a class managing
-    the compression of a filesystem).
-
-``ArchiveReadFS``
-    a read-only filesystem that implements the methods required
-    to *read* the archive.
-
-``ArchiveFS``
-    a `proxy <https://github.com/althonos/fs.proxy>`_ filesystem
-    used to make an archive seemingly writable.
+.. Abstract Base Classes
+.. ---------------------
+..
+.. ``fs.archive`` declares three abstract base classes in ``fs.archive.base``:
+..
+.. ``ArchiveSaver``
+..     defines how an archive is saved (in essence, a class managing
+..     the compression of a filesystem).
+..
+.. ``ArchiveReadFS``
+..     a read-only filesystem that implements the methods required
+..     to *read* the archive.
+..
+.. ``ArchiveFS``
+..     a `proxy <https://github.com/althonos/fs.proxy>`_ filesystem
+..     used to make an archive seemingly writable.
 
 
 See also
