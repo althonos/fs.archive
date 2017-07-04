@@ -16,6 +16,7 @@ from ...info import Info
 from ...path import join, recursepath
 from ...tempfs import TempFS
 from ...memoryfs import MemoryFS
+from ..._fscompat import fsdecode, fspath
 
 from .. import base
 
@@ -26,7 +27,7 @@ class ISOReadFile(io.RawIOBase):
 
     def __init__(self, fs, record):
         self._fs = fs
-        self._stream = fs._stream
+        self._handle = fs._handle
         self._record = record
         self._start = record['Location of Extent'] * fs._blocksize
         self._end = self._start + record['Data Length']
@@ -40,8 +41,8 @@ class ISOReadFile(io.RawIOBase):
         if size == -1 or size + self._position > len(self):
             size = len(self) - self._position
         with self._fs._lock:
-            self._stream.seek(self._start + self._position)
-            buffer = self._stream.read(size)
+            self._handle.seek(self._start + self._position)
+            buffer = self._handle.read(size)
         self._position += size
         return buffer
 
@@ -62,7 +63,7 @@ class ISOReadFile(io.RawIOBase):
             elif offset < 0:
                 offset = 0
             with self._fs._lock:
-                self._stream.seek(self._start + offset)
+                self._handle.seek(self._start + offset)
                 self._position = offset
 
         if whence == Seek.current:
@@ -71,7 +72,7 @@ class ISOReadFile(io.RawIOBase):
             elif offset + self._start + self._position < 0:
                 offset = - self._start - self._position
             with self._fs._lock:
-                self._stream.seek(self._start + self._position + offset)
+                self._handle.seek(self._start + self._position + offset)
                 self._position += offset
 
         if whence == Seek.end:
@@ -80,7 +81,7 @@ class ISOReadFile(io.RawIOBase):
             elif -offset > len(self):
                 offset = -len(self)
             with self._fs._lock:
-                self._stream.seek(self._end + offset)
+                self._handle.seek(self._end + offset)
                 self._position += offset
 
         return self._position
@@ -113,38 +114,38 @@ class ISOReadFS(base.ArchiveReadFS):
     def __init__(self, handle, **options):
         """Create a new read-only filesystem from an ISO image byte stream.
         """
+
         super(ISOReadFS, self).__init__(handle)
 
-        if isinstance(handle, six.binary_type):
-            handle = handle.decode('utf-8')
-        if isinstance(handle, six.text_type):
-            handle = open(handle, 'rb')
-            self._close_handle = True
-        else:
-            self._close_handle = False
+        try:
+            self._primary_descriptor = next(
+                d for d in self._descriptors()
+                if d.type=='PrimaryVolumeDescriptor'
+            )
+        except StopIteration:
+            raise errors.CreateFailed(
+                'could not find primary volume descriptor')
+        except construct.core.ConstructError as ce:
+            raise errors.CreateFailed(
+                'error occured while parsing: {}'.format(ce))
 
-        self._stream = handle
-
-        self._primary_descriptor = next(
-            d for d in self._descriptors() if d.type=='PrimaryVolumeDescriptor')
         self._blocksize = self._primary_descriptor['Logical Block Size']
+        self._path_table = \
+            {'/': self._primary_descriptor['Root Directory Record']}
 
-        self._path_table = {
-            '/': self._primary_descriptor['Root Directory Record']
-        }
 
     def _descriptors(self):
         """Yield the descriptors of the ISO image.
         """
 
         # Go to initial descriptor adress
-        self._stream.seek(16 * 2048)
+        self._handle.seek(16 * 2048)
 
         descriptor_type = None
         while descriptor_type != 'VolumeDescriptorSetTerminator':
 
             # Read the next block & decode the descriptor
-            block = self._stream.read(2048)
+            block = self._handle.read(2048)
             meta_descriptor = VolumeDescriptorParser.parse(block)
 
             # Extract the type of the descriptor
@@ -175,7 +176,7 @@ class ISOReadFS(base.ArchiveReadFS):
                 yield record
 
             # Attempt to explore adjacent block
-            extent = self._stream.read(self._blocksize)
+            extent = self._handle.read(self._blocksize)
             block = DirectoryBlock(self._blocksize).parse(extent)
 
     def _find(self, path):
@@ -186,15 +187,16 @@ class ISOReadFS(base.ArchiveReadFS):
                 raise errors.ResourceNotFound(subpath)
 
             for r in self._directory_records(record["Location of Extent"]):
-                record_name = r['File Identifier'].decode('ascii').split(';')[0]
-                record_path = join(subpath, record_name)
+                record_name = self._make_name(r['File Identifier'])
+                record_path = join(subpath, record_name.lower())
                 self._path_table[record_path] = r
 
     def _get_block(self, block_id):
-        self._stream.seek(self._blocksize * block_id)
-        return self._stream.read(self._blocksize)
+        self._handle.seek(self._blocksize * block_id)
+        return self._handle.read(self._blocksize)
 
     def _get_record(self, path):
+        path = path.lower()
         if path not in self._path_table:
             self._find(path)
         return self._path_table[path]
@@ -202,13 +204,23 @@ class ISOReadFS(base.ArchiveReadFS):
     def _make_info_from_record(self, record, namespaces=None):
         namespaces = namespaces or ()
 
+        name = self._make_name(record['File Identifier'])
+
         # FIXME: other namespaces
         info = {'basic': {
-            'name': record['File Identifier'].split(b';')[0].decode('ascii'),
+            'name': name.lower() if name != '\0' else '',
             'is_dir': record['Flags'].is_dir,
         }}
 
+        if 'details' in namespaces:
+            info['details'] = {
+                'size': record['Data Length'],
+            }
+
         return Info(info)
+
+    def _make_name(self, name):
+        return name.decode('ascii').split(';')[0].rstrip('.').lower()
 
     def openbin(self, path, mode='r', buffering=-1, **options):
         if not mode.startswith('r'):
@@ -216,6 +228,9 @@ class ISOReadFS(base.ArchiveReadFS):
 
         _path = self.validatepath(path)
         record = self._get_record(_path)
+
+        if record['Flags'].is_dir:
+            raise errors.FileExpected(path)
 
         return ISOReadFile(self, record)
 
@@ -227,7 +242,7 @@ class ISOReadFS(base.ArchiveReadFS):
             raise errors.DirectoryExpected(path)
 
         for record in self._directory_records(record["Location of Extent"]):
-            name = record['File Identifier'].split(b';')[0].decode('ascii')
+            name = self._make_name(record['File Identifier'])
             self._path_table[join(_path, name)] = record
             yield self._make_info_from_record(record, namespaces)
 
