@@ -85,8 +85,8 @@ class ArchiveReadTestCases(object):
     def test_create_failed(self):
         """Check CreateFailed is on rubbish input stream.
         """
-        handle = six.moves.BytesIO()
-        handle.write('a'*100+'z'*100)
+        handle = io.BytesIO()
+        handle.write(b'a'*100+b'z'*100)
         handle.seek(0)
 
         with self.assertRaises(errors.CreateFailed):

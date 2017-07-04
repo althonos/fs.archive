@@ -115,8 +115,28 @@ class ArchiveReadFS(FS):
                 when the filesystem is closed. **[default: True]**
         """
         super(ArchiveReadFS, self).__init__()
-        self._handle = handle
-        self._close_handle = options.get('close_handle', True)
+
+        if isinstance(handle, six.binary_type):
+            # Decode the path if it is in binary format
+            handle = fsdecode(fspath(handle))
+
+        if isinstance(handle, six.text_type):
+            # Expand the path
+            _path = os.path.expanduser(os.path.expandvars(handle))
+            _path = os.path.normpath(os.path.abspath(_path))
+            # Create the readable fs if the handle exists
+            if os.path.exists(_path) and os.access(_path, os.R_OK):
+                self._close_handle = True
+                self._handle = open(_path, 'rb')
+
+        elif hasattr(handle, 'read'):
+            # Create the readable fs if the handle is readable
+            if handle.readable() and handle.seekable():
+                self._close_handle = options.get('close_handle', True)
+                self._handle = handle
+
+        else:
+            raise errors.CreateFailed("cannot use {}".format(handle))
 
     def __repr__(self):
         return "{}({!r})".format(
