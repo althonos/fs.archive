@@ -7,10 +7,12 @@ from __future__ import unicode_literals
 from __future__ import division
 
 import pytz
+import operator
 import datetime
 import collections
 
 from construct import *
+
 
 
 class BothEndian(Construct):
@@ -32,7 +34,7 @@ class BothEndian(Construct):
         stream.write(self.last.build(obj))
 
 
-class DescDateTimeAdapter(Adapter):
+class LongTimeAdapter(Adapter):
 
     def _decode(self, obj, context):
 
@@ -67,7 +69,7 @@ class DescDateTimeAdapter(Adapter):
             'gmt_offset': int(obj.utcoffset().total_seconds() // 60 // 15),
         }
 
-class DirDateTimeAdapter(Adapter):
+class ShortTimeAdapter(Adapter):
 
     def _decode(self, obj, context):
 
@@ -101,7 +103,7 @@ class DirDateTimeAdapter(Adapter):
             'gmt_offset': int(obj.utcoffset().total_seconds() // 60 // 15),
         }
 
-DescDateTime = Struct(
+LongTime = Struct(
     "year"       / Bytes(4),
     "month"      / Bytes(2),
     "day"        / Bytes(2),
@@ -112,7 +114,7 @@ DescDateTime = Struct(
     "gmt_offset" / Int8sn,
 )
 
-DirDateTime = Struct(
+ShortTime = Struct(
     "year_offset" / Int8un,
     "month" / Int8un,
     "day" / Int8un,
@@ -128,11 +130,11 @@ DirectoryRecord = Struct(
     "Extended Attribute Record Length" / Int8un,
     "Location of Extent"               / BothEndian(Int32ul, Int32ub),
     "Data Length"                      / BothEndian(Int32ul, Int32ub),
-    "Recording Date and Time"          / DirDateTimeAdapter(DirDateTime),
+    "Recording Date and Time"          / ShortTimeAdapter(ShortTime),
     "Flags" / BitStruct(
-        "is_not_last" / Flag,
-        "_r2" / Default(Flag, False),
-        "_r1" / Default(Flag, False),
+        "continue" / Flag,
+        "_6" / Const(Flag, False),
+        "_5" / Const(Flag, False),
         "has_permissions" / Flag,
         "has_extended_info" / Flag,
         "is_associated" / Flag,
@@ -216,10 +218,10 @@ def _VolumeDescriptor(escape_sequences=None):
         "Copyright File Identifier" / Default(Bytes(38), b'\x20'*38),
         "Abstract File Identifier" / Default(Bytes(36), b'\x20'*36),
         "Bibliographic File Identifier" / Default(Bytes(37), b'\x20'*37),
-        "Volume Creation Date and Time" / DescDateTimeAdapter(DescDateTime),
-        "Volume Modification Date and Time" / DescDateTimeAdapter(DescDateTime),
-        "Volume Expiration Date and Time" / DescDateTimeAdapter(DescDateTime),
-        "Volume Effective Date and Time" / DescDateTimeAdapter(DescDateTime),
+        "Volume Creation Date and Time" / LongTimeAdapter(LongTime),
+        "Volume Modification Date and Time" / LongTimeAdapter(LongTime),
+        "Volume Expiration Date and Time" / LongTimeAdapter(LongTime),
+        "Volume Effective Date and Time" / LongTimeAdapter(LongTime),
 
         "File Structure Version" / Const(b'\x01'),
         Padding(1, strict=True),
@@ -239,9 +241,147 @@ SupplementaryVolumeDescriptor = \
 )
 
 
+
+_length = operator.itemgetter("Length")
+
+ComponentRecord = Struct(
+    "Flags" / BitStruct(
+        "_7" / Const(Flag, False),
+        "_6" / Const(Flag, False),
+        "_5" / Flag,
+        "_4" / Flag,
+        "root" / Flag,
+        "parent" / Flag,
+        "current" / Flag,
+        "continue" / Flag,
+    ),
+    "Length" / Int8un,
+    "Content" / Bytes(this["Length"] - 2),
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 SystemExtension = Struct(
 
-    "Name" / Bytes(2),
+    "Signature Word" / Bytes(2),
+
+    Embedded(Switch(this['Name'], {
+
+        b'PX': Struct(
+            "Length" / Const(Int8un, 44),
+            "System Use Entry Version" / Const(Int8un, 1),
+            "File Mode" / BothEndian(Int32ul, Int32ub),
+            "Links" / BothEndian(Int32ul, Int32ub),
+            "User ID" / BothEndian(Int32ul, Int32ub),
+            "Group ID" / BothEndian(Int32ul, Int32ub),
+            "Serial Number" / BothEndian(Int32ul, Int32ub)
+        ),
+
+        b'PN': Struct(
+            "Length" / Const(Int8un, 20),
+            "System Use Entry Version" / Const(Int8un, 1),
+            "Device Number High" / BothEndian(Int32ul, Int32ub),
+            "Device Number Low" / BothEndian(Int32ul, Int32ub),
+            "Device Number" / Computed(
+                this["Device Number High"] << 32 | this["Device Number Low"]),
+        ),
+
+        b'SL': Struct(
+            "Length" / Int8un,
+            "System Use Entry Version" / Const(Int8un, 1),
+            "Flags" / BitStruct(
+                '_7' / Const(Flag, False),
+                '_6' / Const(Flag, False),
+                '_5' / Const(Flag, False),
+                '_4' / Const(Flag, False),
+                '_3' / Const(Flag, False),
+                '_2' / Const(Flag, False),
+                '_1' / Const(Flag, False),
+                'continue' / Flag,
+            ),
+            "Component Area" / RepeatUntil(
+                lambda obj, lst, ctx: sum(map(length, lst)) == _length(obj) - 5,
+                ComponentRecord
+            ),
+        ),
+
+        b'NM': Struct(
+            "Length" / Int8un,
+            "System Use Entry Version" / Const(Int8un, 1),
+            "Flags" / BitStruct(
+                "_7" / Const(Flag, False),
+                "_6" / Const(Flag, False),
+                "_5" / Flag,
+                "_4" / Const(Flag, False),
+                "_3" / Const(Flag, False),
+                "parent" / Flag,
+                "current" / Flag,
+                "continue" / Flag,
+            ),
+            "Name Content" / Bytes(_length(this))
+        ),
+
+        b'CL': Struct(
+            "Length" / Const(Int8un, 12),
+            "System Use Entry Version" / Const(Int8un, 1),
+            "Location of Child Directory" / BothEndian(Int32ul, Int32ub),
+        ),
+
+        b'PL': Struct(
+            "Length" / Const(Int8un, 12),
+            "System Use Entry Version" / Const(Int8un, 1),
+            "Location of Parent Directory" / BothEndian(Int32ul, Int32ub),
+        ),
+
+        b'RE': Struct(
+            "Length" / Const(Int8un, 4),
+            "System Use Entry Version" / Const(Int8un, 1),
+        ),
+
+        b'TF': Struct(
+            "Length" / Int8un,
+            "System Use Entry Version" / Const(Int8un, 1),
+            "Flags" / BitStruct(
+                "long_form" / Flag,
+                "effective" / Flag,
+                "expiration" / Flag,
+                "backup" / Flag,
+                "attributes" / Flag,
+                "access" / Flag,
+                "modify" / Flag,
+                "creation" / Flag
+            ),
+            # "Timestamps" /
+            #     IfThenElse(this["Flags"].long_form, LongTime, ShortTime)[
+            #         lambda obj: sum(obj["Flags"].values()) - this["Flag"].long_form],
+
+        ),
+
+        b'SF': Struct(
+            "Length" / Const(Int8un, 21),
+            "System Use Entry Version" / Const(Int8un, 1),
+            "Virtual File Size High" / BothEndian(Int32ul, Int32ub),
+            "Virtual File Size Low" / BothEndian(Int32ul, Int32ub),
+            "Virtual File Size" / Computed(
+                this["Virtual File Size High"] << 32 | \
+                this["Virtual File Size Low"]
+            ),
+            "Table Depth" / Int8un,
+        ),
+
+    }))
 
 )
 
