@@ -29,6 +29,8 @@ from . import base
 class ArchiveReadTestCases(object):
     """Base class to test ArchiveReadFS subclasses.
     """
+    long_names = False
+    unicode_names = False
 
     @abc.abstractproperty
     def _archive_read_fs(self):
@@ -62,7 +64,13 @@ class ArchiveReadTestCases(object):
         fs.settext('top2.txt', 'Hello, World')
         fs.settext('foo/bar/egg', 'foofoo')
         fs.makedir('unicode')
+        fs.makedir('extras')
         fs.settext('unicode/text.txt', UNICODE_TEXT)
+
+        if self.unicode_names:
+            fs.settext('extras/☭༉', 'I live in a unicode file !')
+        if self.long_names:
+            fs.settext('extras/'+'a'*300, 'This is a long file name !')
 
     def setUp(self, handle):
         self.handle = handle
@@ -218,6 +226,22 @@ class ArchiveReadTestCases(object):
         self.fs.getinfo('foo/bar')
         self.fs.getinfo('foo')
 
+    def test_archive_meta_standard(self):
+        """Check that `ArchiveReadFS.getmeta` standard *ns* has the right keys.
+        """
+        meta = self.fs.getmeta("standard")
+        self.assertEqual(meta, self.fs.getmeta())
+
+        self.assertIn('case_insensitive', meta)
+        self.assertIn('invalid_path_chars', meta)
+        self.assertIn('max_path_length', meta)
+        self.assertIn('max_sys_path_length', meta)
+        self.assertIn('network', meta)
+        self.assertIn('read_only', meta)
+        self.assertIn('supports_rename', meta)
+        self.assertIn('thread_safe', meta)
+        self.assertIn('unicode_paths', meta)
+        self.assertIn('virtual', meta)
 
 
 @six.add_metaclass(abc.ABCMeta)

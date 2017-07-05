@@ -102,13 +102,32 @@ class ISOReadFile(io.RawIOBase):
 class ISOReadFS(base.ArchiveReadFS):
 
     _meta = {
-        'case_insensitive': True,
-        'network': False,
-        'read_only': True,
-        'supports_rename': True,
-        'thread_safe': True,
-        'unicode_paths': False,
-        'virtual': False,
+        'standard': {
+            'case_insensitive': True, # FIXME : is it ?
+            'network': False,
+            'read_only': True,
+            'supports_rename': False,
+            'thread_safe': False, # FIXME: is it ?
+            'unicode_paths': False,
+            'invalid_path_chars': '\x00\x01',
+            'virtual': False,
+            'max_path_length': None,
+            'max_sys_path_length': None,
+        },
+        # 'archive': {
+        #     # IN LEVEL 1
+        #     # 'max_dirname_length': 8
+        #     # 'max_filename_length': 12
+        #     # IN LEVEL 3
+        #     'max_dirname_length': 31   # in
+        #     'max_filename_length': 30, # in Level 3
+        #     # IN ENHANCED VOLUME DESCRIPTOR
+        #     # 'max_filename_length': 207
+        #     # 'max_dirname_length': 207
+        #     #
+        #     'max_depth': 8,
+        #     'na'
+        # }
     }
 
     def __init__(self, handle, **options):
@@ -117,10 +136,15 @@ class ISOReadFS(base.ArchiveReadFS):
 
         super(ISOReadFS, self).__init__(handle)
 
+        self._joliet = False
+        self._rockridge = False
+
         try:
-            self._primary_descriptor = next(
-                d for d in self._descriptors()
-                if d.type=='PrimaryVolumeDescriptor'
+            descs = list(self._descriptors())
+            pvd = next(d for d in descs if d.type=='PrimaryVolumeDescriptor')
+            svd = next(
+                (d for d in descs if d.type=='SupplementaryVolumeDescriptor'),
+                None,
             )
         except StopIteration:
             raise errors.CreateFailed(
@@ -129,10 +153,13 @@ class ISOReadFS(base.ArchiveReadFS):
             raise errors.CreateFailed(
                 'error occured while parsing: {}'.format(ce))
 
-        self._blocksize = self._primary_descriptor['Logical Block Size']
-        self._path_table = \
-            {'/': self._primary_descriptor['Root Directory Record']}
+        self._blocksize = pvd['Logical Block Size']
 
+        if svd is not None:
+            self._path_table = {'/': svd['Root Directory Record']}
+            self._joliet = True
+        else:
+            self._path_table = {'/': pvd['Root Directory Record']}
 
     def _descriptors(self):
         """Yield the descriptors of the ISO image.
@@ -225,6 +252,12 @@ class ISOReadFS(base.ArchiveReadFS):
 
     def _make_name(self, name):
         return name.decode('ascii').split(';')[0].rstrip('.').lower()
+
+    def getmeta(self, namespace="standard"):
+        meta = super(ISOReadFS, self).getmeta(namespace)
+        if namespace == 'standard':
+            meta['unicode_paths'] = self._joliet or self._rockridge
+        return meta
 
     def openbin(self, path, mode='r', buffering=-1, **options):
         if not mode.startswith('r'):

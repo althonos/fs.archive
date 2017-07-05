@@ -103,6 +103,8 @@ class ArchiveReadFS(FS):
     """A filesystem allowing to read an archive.
     """
 
+    _meta = NotImplemented
+
     def __init__(self, handle, **options):
         """Create a new archive reader filesystem.
 
@@ -173,14 +175,24 @@ class ArchiveReadFS(FS):
 
     def getmeta(self, namespace="standard"):
         if namespace == "standard":
-            return self._meta.copy()
-        return {}
+            return self._meta['standard'].copy()
+        # elif namespace == "archive":
+        #     return self._meta['archive'].copy()
+        else:
+            return {}
 
     def close(self):
         if not self.isclosed():
             if self._close_handle:
                 getattr(self._handle, 'close', lambda: None)()
             super(ArchiveReadFS, self).close()
+
+    def validatepath(self, path):
+        _path = super(ArchiveReadFS, self).validatepath(path)
+        return _path
+
+
+
 
 
 @six.add_metaclass(abc.ABCMeta)

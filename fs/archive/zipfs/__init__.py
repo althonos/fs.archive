@@ -27,13 +27,21 @@ from .. import base
 class ZipReadFS(base.ArchiveReadFS):
 
     _meta = {
-        'case_insensitive': True,
-        'network': False,
-        'read_only': True,
-        'supports_rename': False,
-        'thread_safe': True,
-        'unicode_paths': True,
-        'virtual': False
+        'standard': {
+            'case_insensitive': True,
+            'network': False,
+            'read_only': True,
+            'supports_rename': False,
+            'thread_safe': True,
+            'unicode_paths': True,
+            'virtual': False,
+            'max_path_length': None,
+            'max_sys_path_length': None,
+            'invalid_path_chars': '\x00\x01',
+        },
+        # 'archive': {
+        #     'name_format': '.*',
+        # }
     }
 
     def __init__(self, handle, **options):

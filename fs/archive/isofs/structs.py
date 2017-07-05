@@ -181,7 +181,7 @@ VolumeDescriptorHeader = Struct(
 
 RawVolumeDescriptor = Struct(
     Embedded(VolumeDescriptorHeader),
-    "data"       / Bytes(2014),
+    "data"       / Bytes(2041),
 )
 
 BootRecord = Struct(
@@ -228,9 +228,41 @@ PrimaryVolumeDescriptor = Struct(
     "Reserved" / Bytes(653),
 )
 
-# VolumeDescriptorParser = Union(
-#     "VolumeDescriptor" / VolumeDescriptor,
-#     "PrimaryVolumeDescriptor" / Optional(PrimaryVolumeDescriptor),
-#     "BootRecord" / Optional(BootRecord),
-#     "RawVolumeDescriptor" / Optional(RawVolumeDescriptor),
-# )
+SupplementaryVolumeDescriptor = Struct(
+    Embedded(VolumeDescriptorHeader),
+    Const(b'\x00'),
+    "System Identifier" / Bytes(32),
+    "Volume Identifier" / Bytes(32),
+    Padding(8, b'\x00', strict=True),
+    "Volume Space Size" / BothEndian(Int32ul, Int32ub),
+    "UCS-2 Escape Sequence" / OneOf(Bytes(3),
+        [b'\x25\x2f\x40', b'\x25\x2f\x43', b'\x25\x2f\x45']),
+    Padding(29, b'\x00', strict=True),
+    "Volume Set Size" / BothEndian(Int16ul, Int16ub),
+    "Volume Sequence Number" / BothEndian(Int16ul, Int16ub),
+    "Logical Block Size" / BothEndian(Int16ul, Int16ub),
+    "Path Table Size" / BothEndian(Int32ul, Int32ub),
+    "Location of Type-L Path Table" / Int32ul,
+    "Location of the Optional Type-L Path Table" / Int32ul,
+    "Location of Type-M Path Table" / Int32ub,
+    "Location of the Optional Type-M Path Table" / Int32ub,
+    "Root Directory Record" / DirectoryRecord,
+    "Volume Set Identifier" / Bytes(128),
+
+    # NB: fix for extended publisher info
+    "Publisher Identifier" / Default(Bytes(128), b'\x20'*128),
+    "Data Preparer Identifier" / Default(Bytes(128), b'\x20'*128),
+    "Application Identifier" /   Default(Bytes(128), b'\x20'*128),
+    "Copyright File Identifier" / Default(Bytes(38), b'\x20'*38),
+    "Abstract File Identifier" / Default(Bytes(36), b'\x20'*36),
+    "Bibliographic File Identifier" / Default(Bytes(37), b'\x20'*37),
+    "Volume Creation Date and Time" / DescDateTimeAdapter(DescDateTime),
+    "Volume Modification Date and Time" / DescDateTimeAdapter(DescDateTime),
+    "Volume Expiration Date and Time" / DescDateTimeAdapter(DescDateTime),
+    "Volume Effective Date and Time" / DescDateTimeAdapter(DescDateTime),
+
+    "File Structure Version" / Const(b'\x01'),
+    Padding(1, strict=True),
+    "Application Used" / Bytes(512),
+    "Reserved" / Bytes(653),
+)

@@ -27,13 +27,23 @@ from .file import TarFile
 class TarReadFS(base.ArchiveReadFS):
 
     _meta = {
-        'case_insensitive': True, # FIXME : is it ?
-        'network': False,
-        'read_only': True,
-        'supports_rename': False,
-        'thread_safe': True, # FIXME: is it ?
-        'unicode_paths': True,
-        'virtual': False,
+        'standard': {
+            'case_insensitive': True, # FIXME : is it ?
+            'network': False,
+            'read_only': True,
+            'supports_rename': False,
+            'thread_safe': True, # FIXME: is it ?
+            'unicode_paths': True,
+            'virtual': False,
+            'max_path_length': None,
+            'max_sys_path_length': None,
+            'invalid_path_chars': '\x00\x01',
+        },
+        # 'archive': {
+        #     'max_dirname_length': None,
+        #     'max_filename_length': None
+        #     'name_format': '.*',
+        # }
     }
 
     _TYPE_MAP = {
