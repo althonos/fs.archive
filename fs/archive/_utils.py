@@ -24,7 +24,7 @@ def writable_path(path):
     try:
         with open(path, 'w'):
             pass
-    except OSError as oe:
+    except (OSError, IOError):
         return False
     else:
         os.remove(path)
@@ -36,7 +36,7 @@ def writable_stream(handle):
         return handle.writable()
     try:
         handle.write(b'')
-    except (io.UnsupportedOperation, OSError):
+    except (io.UnsupportedOperation, IOError):
         return False
     else:
         return True
