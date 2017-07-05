@@ -67,7 +67,6 @@ class DescDateTimeAdapter(Adapter):
             'gmt_offset': int(obj.utcoffset().total_seconds() // 60 // 15),
         }
 
-
 class DirDateTimeAdapter(Adapter):
 
     def _decode(self, obj, context):
@@ -102,7 +101,6 @@ class DirDateTimeAdapter(Adapter):
             'gmt_offset': int(obj.utcoffset().total_seconds() // 60 // 15),
         }
 
-
 DescDateTime = Struct(
     "year"       / Bytes(4),
     "month"      / Bytes(2),
@@ -124,6 +122,7 @@ DirDateTime = Struct(
     "gmt_offset" / Int8sn,
 )
 
+
 DirectoryRecord = Struct(
     "Record Length"                    / Int8un,
     "Extended Attribute Record Length" / Int8un,
@@ -144,7 +143,6 @@ DirectoryRecord = Struct(
     "_Interleave gap" / Default(Byte, b'\x00'),
     "Volume Sequence Number" / BothEndian(Int16ul, Int16ub),
     "File Identifier Length" / Int8un,
-
     "File Identifier" / Bytes(this["File Identifier Length"]),
 
     "_Padding" / If(
@@ -157,7 +155,6 @@ DirectoryRecord = Struct(
                               - (this["File Identifier Length"] + 1) % 2,
     )
 )
-
 
 def DirectoryBlock(blocksize):
     return Struct(
@@ -192,91 +189,72 @@ BootRecord = Struct(
     "boot_sys_use" / Bytes(1977),
 )
 
-PrimaryVolumeDescriptor = Struct(
-    Embedded(VolumeDescriptorHeader),
-    Const(b'\x00'),
-    "System Identifier" / Bytes(32),
-    "Volume Identifier" / Bytes(32),
-    Padding(8, b'\x00', strict=True),
-    "Volume Space Size" / BothEndian(Int32ul, Int32ub),
-    Padding(32, b'\x00', strict=True),
-    "Volume Set Size" / BothEndian(Int16ul, Int16ub),
-    "Volume Sequence Number" / BothEndian(Int16ul, Int16ub),
-    "Logical Block Size" / BothEndian(Int16ul, Int16ub),
-    "Path Table Size" / BothEndian(Int32ul, Int32ub),
-    "Location of Type-L Path Table" / Int32ul,
-    "Location of the Optional Type-L Path Table" / Int32ul,
-    "Location of Type-M Path Table" / Int32ub,
-    "Location of the Optional Type-M Path Table" / Int32ub,
-    "Root Directory Record" / DirectoryRecord,
-    "Volume Set Identifier" / Bytes(128),
+def _VolumeDescriptor(escape_sequences=None):
+    return Struct(
+        Embedded(VolumeDescriptorHeader),
+        Const(b'\x00'),
+        "System Identifier" / Bytes(32),
+        "Volume Identifier" / Bytes(32),
+        Padding(8, b'\x00', strict=True),
+        "Volume Space Size" / BothEndian(Int32ul, Int32ub),
+        Padded(32, escape_sequences or Pass, b'\x00', strict=True),
+        "Volume Set Size" / BothEndian(Int16ul, Int16ub),
+        "Volume Sequence Number" / BothEndian(Int16ul, Int16ub),
+        "Logical Block Size" / BothEndian(Int16ul, Int16ub),
+        "Path Table Size" / BothEndian(Int32ul, Int32ub),
+        "Location of Type-L Path Table" / Int32ul,
+        "Location of the Optional Type-L Path Table" / Int32ul,
+        "Location of Type-M Path Table" / Int32ub,
+        "Location of the Optional Type-M Path Table" / Int32ub,
+        "Root Directory Record" / DirectoryRecord,
+        "Volume Set Identifier" / Bytes(128),
 
-    # NB: fix for extended publisher info
-    "Publisher Identifier" / Default(Bytes(128), b'\x20'*128),
-    "Data Preparer Identifier" / Default(Bytes(128), b'\x20'*128),
-    "Application Identifier" /   Default(Bytes(128), b'\x20'*128),
-    "Copyright File Identifier" / Default(Bytes(38), b'\x20'*38),
-    "Abstract File Identifier" / Default(Bytes(36), b'\x20'*36),
-    "Bibliographic File Identifier" / Default(Bytes(37), b'\x20'*37),
-    "Volume Creation Date and Time" / DescDateTimeAdapter(DescDateTime),
-    "Volume Modification Date and Time" / DescDateTimeAdapter(DescDateTime),
-    "Volume Expiration Date and Time" / DescDateTimeAdapter(DescDateTime),
-    "Volume Effective Date and Time" / DescDateTimeAdapter(DescDateTime),
+        # NB: fix for extended publisher info
+        "Publisher Identifier" / Default(Bytes(128), b'\x20'*128),
+        "Data Preparer Identifier" / Default(Bytes(128), b'\x20'*128),
+        "Application Identifier" /   Default(Bytes(128), b'\x20'*128),
+        "Copyright File Identifier" / Default(Bytes(38), b'\x20'*38),
+        "Abstract File Identifier" / Default(Bytes(36), b'\x20'*36),
+        "Bibliographic File Identifier" / Default(Bytes(37), b'\x20'*37),
+        "Volume Creation Date and Time" / DescDateTimeAdapter(DescDateTime),
+        "Volume Modification Date and Time" / DescDateTimeAdapter(DescDateTime),
+        "Volume Expiration Date and Time" / DescDateTimeAdapter(DescDateTime),
+        "Volume Effective Date and Time" / DescDateTimeAdapter(DescDateTime),
 
-    "File Structure Version" / Const(b'\x01'),
-    Padding(1, strict=True),
-    "Application Used" / Bytes(512),
-    "Reserved" / Bytes(653),
-)
-
-SupplementaryVolumeDescriptor = Struct(
-    Embedded(VolumeDescriptorHeader),
-    Const(b'\x00'),
-    "System Identifier" / Bytes(32),
-    "Volume Identifier" / Bytes(32),
-    Padding(8, b'\x00', strict=True),
-    "Volume Space Size" / BothEndian(Int32ul, Int32ub),
-    "UCS-2 Escape Sequence" / OneOf(Bytes(3),
-        [b'\x25\x2f\x40', b'\x25\x2f\x43', b'\x25\x2f\x45']),
-    Padding(29, b'\x00', strict=True),
-    "Volume Set Size" / BothEndian(Int16ul, Int16ub),
-    "Volume Sequence Number" / BothEndian(Int16ul, Int16ub),
-    "Logical Block Size" / BothEndian(Int16ul, Int16ub),
-    "Path Table Size" / BothEndian(Int32ul, Int32ub),
-    "Location of Type-L Path Table" / Int32ul,
-    "Location of the Optional Type-L Path Table" / Int32ul,
-    "Location of Type-M Path Table" / Int32ub,
-    "Location of the Optional Type-M Path Table" / Int32ub,
-    "Root Directory Record" / DirectoryRecord,
-    "Volume Set Identifier" / Bytes(128),
-
-    # NB: fix for extended publisher info
-    "Publisher Identifier" / Default(Bytes(128), b'\x20'*128),
-    "Data Preparer Identifier" / Default(Bytes(128), b'\x20'*128),
-    "Application Identifier" /   Default(Bytes(128), b'\x20'*128),
-    "Copyright File Identifier" / Default(Bytes(38), b'\x20'*38),
-    "Abstract File Identifier" / Default(Bytes(36), b'\x20'*36),
-    "Bibliographic File Identifier" / Default(Bytes(37), b'\x20'*37),
-    "Volume Creation Date and Time" / DescDateTimeAdapter(DescDateTime),
-    "Volume Modification Date and Time" / DescDateTimeAdapter(DescDateTime),
-    "Volume Expiration Date and Time" / DescDateTimeAdapter(DescDateTime),
-    "Volume Effective Date and Time" / DescDateTimeAdapter(DescDateTime),
-
-    "File Structure Version" / Const(b'\x01'),
-    Padding(1, strict=True),
-    "Application Used" / Bytes(512),
-    "Reserved" / Bytes(653),
-)
-
-
-#collections.namedtuple('Extensions', ['PX'])(
-PX = Struct(
-        "Signature Word" / Const(b'PX'),
-        "Length" / Const(Int8un, 44),
-        "System Use Entry Version" / Const(Int8un, 1),
-        "File Mode" / BothEndian(Int32ul, Int32ub),
-        "Links" / BothEndian(Int32ul, Int32ub),
-        "User ID" / BothEndian(Int32ul, Int32ub),
-        "Group ID" / BothEndian(Int32ul, Int32ub),
-        "Serial Number" / BothEndian(Int32ul, Int32ub)
+        "File Structure Version" / Const(b'\x01'),
+        Padding(1, strict=True),
+        "Application Used" / Bytes(512),
+        "Reserved" / Bytes(653),
     )
+
+PrimaryVolumeDescriptor = \
+    "PrimaryVolumeDescriptor" / _VolumeDescriptor()
+
+SupplementaryVolumeDescriptor = \
+    "SupplementaryVolumeDescriptor" / _VolumeDescriptor(
+        "UCS-2 Escape Sequence" / OneOf(
+            Bytes(3),
+            [b'\x25\x2f\x40', b'\x25\x2f\x43', b'\x25\x2f\x45']
+        ),
+)
+
+
+SystemExtension = Struct(
+
+    "Name" / Bytes(2),
+
+)
+
+
+
+
+# PX = Struct(
+#         "Signature Word" / Const(b'PX'),
+#         "Length" / Const(Int8un, 44),
+#         "System Use Entry Version" / Const(Int8un, 1),
+#         "File Mode" / BothEndian(Int32ul, Int32ub),
+#         "Links" / BothEndian(Int32ul, Int32ub),
+#         "User ID" / BothEndian(Int32ul, Int32ub),
+#         "Group ID" / BothEndian(Int32ul, Int32ub),
+#         "Serial Number" / BothEndian(Int32ul, Int32ub)
+#     )
