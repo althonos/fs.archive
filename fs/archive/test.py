@@ -243,6 +243,33 @@ class ArchiveReadTestCases(object):
         self.assertIn('unicode_paths', meta)
         self.assertIn('virtual', meta)
 
+    def test_unicode_names(self):
+        if not self.unicode_names:
+            self.skipTest("Set unicode_names to True in test case to enable")
+
+        self.assertTrue(self.fs.exists('extras/☭༉'))
+        self.assertFalse(self.fs.getinfo('extras/☭༉').is_dir)
+
+        with self.assertRaises(errors.DirectoryExpected):
+            self.fs.listdir('extras/☭༉')
+
+        with self.fs.openbin('extras/☭༉') as f:
+            self.assertEqual(f.read(), b'I live in a unicode file !')
+
+    def test_long_names(self):
+        if not self.long_names:
+            self.skipTest("Set long_names to True in test case to enable")
+
+        filename = 'extras/'+'a'*300
+        self.assertTrue(self.fs.exists(filename))
+        self.assertFalse(self.fs.getinfo(filename).is_dir)
+
+        with self.assertRaises(errors.DirectoryExpected):
+            self.fs.listdir(filename)
+
+        with self.fs.openbin(filename) as f:
+            self.assertEqual(f.read(), b'This is a long file name !')
+
 
 @six.add_metaclass(abc.ABCMeta)
 class ArchiveIOTestCases(object):

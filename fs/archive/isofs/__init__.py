@@ -251,7 +251,13 @@ class ISOReadFS(base.ArchiveReadFS):
         return Info(info)
 
     def _make_name(self, name):
-        return name.decode('ascii').split(';')[0].rstrip('.').lower()
+        if name in (b'\x00', b'\x01'):
+            name = name.decode('ascii')
+        elif self._joliet:
+            name = name.decode('utf-16-be')
+        else:
+            name = name.decode('ascii').split(';')[0].rstrip('.').lower()
+        return name
 
     def getmeta(self, namespace="standard"):
         meta = super(ISOReadFS, self).getmeta(namespace)

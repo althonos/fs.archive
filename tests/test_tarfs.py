@@ -25,7 +25,7 @@ def tar_compress(handle, source_fs):
         handle.seek(0)
     saver = fs.archive.tarfs.TarSaver(handle, False)
     saver.save(source_fs)
-    
+
 
 class TestTarFS(fs.test.FSTestCases, unittest.TestCase):
 
@@ -41,6 +41,9 @@ class TestTarFS(fs.test.FSTestCases, unittest.TestCase):
 
 
 class TestTarReadFS(ArchiveReadTestCases, unittest.TestCase):
+
+    long_names = True
+    unicode_names = True
 
     compress = staticmethod(tar_compress)
     make_source_fs = staticmethod(fs.memoryfs.MemoryFS)

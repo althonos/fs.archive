@@ -42,6 +42,9 @@ class TestZipFS(fs.test.FSTestCases, unittest.TestCase):
 
 class TestZipReadFS(ArchiveReadTestCases, unittest.TestCase):
 
+    long_names = True
+    unicode_names = True
+
     compress = staticmethod(zip_compress)
     make_source_fs = staticmethod(fs.memoryfs.MemoryFS)
     _archive_read_fs = fs.archive.zipfs.ZipReadFS
