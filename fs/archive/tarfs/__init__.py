@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 
 import io
 import six
+import sys
 import time
 import tarfile
 import datetime
@@ -17,6 +18,7 @@ from ...time import datetime_to_epoch
 from ...path import dirname, basename, relpath, abspath, splitext
 from ...enums import ResourceType
 from ...iotools import RawWrapper
+from ..._fscompat import fsdecode, fsencode
 from ...permissions import Permissions
 
 from .. import base
@@ -60,14 +62,21 @@ class TarReadFS(base.ArchiveReadFS):
 
     def __init__(self, handle, **options):
         super(TarReadFS, self).__init__(handle, **options)
-
         if isinstance(handle, io.IOBase):
             self._tar = TarFile.open(fileobj=handle, mode='r')
         else:
             self._tar = TarFile.open(handle, mode='r')
 
-        self._contents = set(self._tar.getnames())
-        self._encoding = options.get('encoding', 'utf-8')
+        self._encoding = encoding = options.get('encoding') or \
+            sys.getdefaultencoding().replace('ascii', 'utf-8')
+
+        self._contents = self._get_contents(self._encoding)
+
+    def _get_contents(self, encoding):
+        if six.PY2:
+            return {n.decode(encoding) for n in self._tar.getnames()}
+        else:
+            return set(self._tar.getnames())
 
     def exists(self, path):
         _path = self.validatepath(path)
@@ -81,12 +90,16 @@ class TarReadFS(base.ArchiveReadFS):
             return True
         if _path not in self._contents:
             return False
+        if six.PY2:
+            _path = _path.encode(self._encoding)
         return self._tar.getmember(_path).isdir()
 
     def isfile(self, path):
         _path = relpath(self.validatepath(path))
         if _path in '/' or _path not in self._contents:
             return False
+        if six.PY2:
+            _path = _path.encode(self._encoding)
         return self._tar.getmember(_path).isfile()
 
     def listdir(self, path):
@@ -100,7 +113,7 @@ class TarReadFS(base.ArchiveReadFS):
 
     def getinfo(self, path, namespaces=None):
         namespaces = namespaces or ()
-        _path = self.validatepath(path)
+        _path = relpath(self.validatepath(path))
 
         if not self.exists(_path):
             raise errors.ResourceNotFound(path)
@@ -109,7 +122,10 @@ class TarReadFS(base.ArchiveReadFS):
             tar_info = tarfile.TarInfo()
             tar_info.type = tarfile.DIRTYPE
         else:
-            tar_info = self._tar.getmember(relpath(_path))
+            if six.PY2:
+                tar_info = self._tar.getmember(_path.encode(self._encoding))
+            else:
+                tar_info = self._tar.getmember(_path)
 
         info = {'basic': {
             'name': basename(_path),
@@ -138,7 +154,7 @@ class TarReadFS(base.ArchiveReadFS):
                 'user': tar_info.uname,
             }
         if 'tar' in namespaces and _path not in '/':
-            info['tar'] = tar_info.get_info(self.encoding) \
+            info['tar'] = tar_info.get_info(self._encoding) \
                           if six.PY2 else tar_info.get_info()
             info['tar'].update({
                 k.replace('is', 'is_'):getattr(tar_info, k)()
@@ -149,7 +165,7 @@ class TarReadFS(base.ArchiveReadFS):
         return Info(info)
 
     def openbin(self, path, mode='r', buffering=-1, **options):
-        _path = self.validatepath(path)
+        _path = relpath(self.validatepath(path))
         _mode = Mode(mode)
 
         if _mode.writing:
@@ -157,7 +173,10 @@ class TarReadFS(base.ArchiveReadFS):
         if not self.exists(path):
             raise errors.ResourceNotFound(path)
 
-        tar_info = self._tar.getmember(relpath(_path))
+        if six.PY2:
+            _path = _path.encode(self._encoding)
+
+        tar_info = self._tar.getmember(_path)
         if not tar_info.isfile():
             raise errors.FileExpected(path)
 

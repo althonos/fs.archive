@@ -8,6 +8,7 @@ from __future__ import division
 
 import pytz
 import datetime
+import collections
 
 from construct import *
 
@@ -266,3 +267,16 @@ SupplementaryVolumeDescriptor = Struct(
     "Application Used" / Bytes(512),
     "Reserved" / Bytes(653),
 )
+
+
+#collections.namedtuple('Extensions', ['PX'])(
+PX = Struct(
+        "Signature Word" / Const(b'PX'),
+        "Length" / Const(Int8un, 44),
+        "System Use Entry Version" / Const(Int8un, 1),
+        "File Mode" / BothEndian(Int32ul, Int32ub),
+        "Links" / BothEndian(Int32ul, Int32ub),
+        "User ID" / BothEndian(Int32ul, Int32ub),
+        "Group ID" / BothEndian(Int32ul, Int32ub),
+        "Serial Number" / BothEndian(Int32ul, Int32ub)
+    )

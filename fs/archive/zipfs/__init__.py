@@ -20,6 +20,7 @@ from ...path import forcedir, relpath, dirname, basename, abspath
 from ...path import iteratepath, recursepath, frombase, join
 from ...enums import ResourceType
 from ...iotools import RawWrapper
+from ..._fscompat import fsdecode, fsencode
 
 from .. import base
 
@@ -46,12 +47,15 @@ class ZipReadFS(base.ArchiveReadFS):
 
     def __init__(self, handle, **options):
         super(ZipReadFS, self).__init__(handle, **options)
-        self._zip = zipfile.ZipFile(handle)
+        self._zip = zipfile.ZipFile(self._handle)
 
-        self._namelist = self._zip.namelist()
-        self._contents = self._get_contents()
+        self._encoding = encoding = options.get('encoding') or \
+            sys.getdefaultencoding().replace('ascii', 'utf-8')
 
-    def _get_contents(self):
+        self._namelist = self._get_namelist(self._encoding)
+        self._contents = self._get_contents(self._namelist)
+
+    def _get_contents(self, namelist):
         contents = set()
         for name in self._namelist:
             for partial_name in recursepath(name):
@@ -61,6 +65,12 @@ class ZipReadFS(base.ArchiveReadFS):
                 if partial_name:
                     contents.add(partial_name)
         return contents
+
+    def _get_namelist(self, encoding):
+        if six.PY2:
+            return [n.decode(encoding) for n in self._zip.namelist()]
+        else:
+            return list(self._zip.namelist())
 
     def getinfo(self, path, namespaces=None):
         namespaces = namespaces or ()
@@ -168,7 +178,7 @@ class ZipReadFS(base.ArchiveReadFS):
                     yield info
 
     def openbin(self, path, mode='r', buffering=-1, **options):
-        _path = self.validatepath(path)
+        _path = relpath(self.validatepath(path))
         _mode = Mode(mode)
 
         if _mode.writing:
@@ -179,7 +189,10 @@ class ZipReadFS(base.ArchiveReadFS):
         if not self.isfile(_path):
             raise errors.ResourceNotFound(path)
 
-        bin_file = self._zip.open(relpath(path), 'r')
+        if six.PY2:
+            _path = _path.encode(self._encoding)
+
+        bin_file = self._zip.open(_path, 'r')
         return RawWrapper(bin_file)
 
     def close(self):
