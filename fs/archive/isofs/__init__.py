@@ -20,7 +20,7 @@ from ..._fscompat import fsdecode, fspath
 
 from .. import base
 
-from .structs import VolumeDescriptorParser, DirectoryBlock
+from . import structs
 
 
 class ISOReadFile(io.RawIOBase):
@@ -137,23 +137,25 @@ class ISOReadFS(base.ArchiveReadFS):
     def _descriptors(self):
         """Yield the descriptors of the ISO image.
         """
-
         # Go to initial descriptor adress
         self._handle.seek(16 * 2048)
-
-        descriptor_type = None
-        while descriptor_type != 'VolumeDescriptorSetTerminator':
-
-            # Read the next block & decode the descriptor
+        # Read all descriptors until the terminator
+        while 'Terminator not encountered':
+            # Read the next block
             block = self._handle.read(2048)
-            meta_descriptor = VolumeDescriptorParser.parse(block)
-
-            # Extract the type of the descriptor
-            descriptor_type = meta_descriptor['VolumeDescriptor'].type
-
+            # Peek at the descriptor header,
+            meta = construct.Peek(structs.VolumeDescriptorHeader).parse(block)
+            # If we could not find a valid descriptor header: stop iteration
+            if meta is None:
+                break
+            # get the struct to use
+            desc_parser = getattr(
+                structs, meta.type, structs.RawVolumeDescriptor)
             # Yield the right descriptor struct
-            yield meta_descriptor.get(
-                descriptor_type, meta_descriptor['RawVolumeDescriptor'])
+            yield desc_parser.parse(block)
+            # Stop at the terminator
+            if meta.type == 'VolumeDescriptorSetTerminator':
+                break
 
     def _directory_records(self, block_id):
         """Yield the records within a directory.
@@ -165,7 +167,7 @@ class ISOReadFS(base.ArchiveReadFS):
 
         # Get the main directory block
         extent = self._get_block(block_id)
-        block = DirectoryBlock(self._blocksize).parse(extent)
+        block = structs.DirectoryBlock(self._blocksize).parse(extent)
         block.records = block.records[2:] # NB: remove '\x01' and '\x02'
 
         while block.records:
@@ -177,7 +179,7 @@ class ISOReadFS(base.ArchiveReadFS):
 
             # Attempt to explore adjacent block
             extent = self._handle.read(self._blocksize)
-            block = DirectoryBlock(self._blocksize).parse(extent)
+            block = structs.DirectoryBlock(self._blocksize).parse(extent)
 
     def _find(self, path):
         for subpath in recursepath(path):

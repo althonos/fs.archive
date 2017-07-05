@@ -46,7 +46,7 @@ class DescDateTimeAdapter(Adapter):
             int(obj['minute']),
             int(obj['second']),
             int(obj['hundredths']) * 10000,
-            tzinfo = pytz.FixedOffset(int(obj['gmt_offset'])*15)
+            tzinfo=pytz.FixedOffset(int(obj['gmt_offset'])*15)
         )
 
     def _encode(self, obj, context):
@@ -63,13 +63,17 @@ class DescDateTimeAdapter(Adapter):
             'minute': '{:>02d}'.format(obj.minute).encode('ascii'),
             'second': '{:>02d}'.format(obj.second).encode('ascii'),
             'hundredths': '{:>02d}'.format(obj.microsecond // 10000).encode('ascii'),
-            'gmt_offset': int(obj.utcoffset().total_seconds() // 60),
+            'gmt_offset': int(obj.utcoffset().total_seconds() // 60 // 15),
         }
 
 
 class DirDateTimeAdapter(Adapter):
 
     def _decode(self, obj, context):
+
+        if not int(obj['month']):
+            return None
+
         return datetime.datetime(
             int(obj['year_offset']) + 1900,
             int(obj['month']),
@@ -77,10 +81,16 @@ class DirDateTimeAdapter(Adapter):
             int(obj['hour']),
             int(obj['minute']),
             int(obj['second']),
-            tzinfo = pytz.FixedOffset(int(obj['gmt_offset'])*15)
+            tzinfo=pytz.FixedOffset(int(obj['gmt_offset'])*15)
         )
 
     def _encode(self, obj, context):
+
+        if obj is None:
+            return {'year': 0, 'month': 0, 'day': 0, 'hour': 0,
+                    'minute': 0, 'second': 0, 'hundredths': 0,
+                    'gmt_offset': 0}
+
         return {
             'year_offset': obj.year - 1900,
             'month': obj.month,
@@ -88,7 +98,7 @@ class DirDateTimeAdapter(Adapter):
             'hour': obj.hour,
             'minute': obj.minute,
             'second': obj.second,
-            'gmt_offset': int(obj.utcoffset().total_seconds() // 60),
+            'gmt_offset': int(obj.utcoffset().total_seconds() // 60 // 15),
         }
 
 
@@ -143,7 +153,7 @@ DirectoryRecord = Struct(
 
     "System Use" / Bytes(
         this["Record Length"] - 33 - this["File Identifier Length"] \
-                              - (this["File Identifier Length"]+1) % 2
+                              - (this["File Identifier Length"] + 1) % 2,
     )
 )
 
@@ -157,11 +167,12 @@ def DirectoryBlock(blocksize):
     )
 
 
-VolumeDescriptor = Struct(
+VolumeDescriptorHeader = Struct(
     "type"       / Enum(Byte,
         BootRecord                    = 0,
         PrimaryVolumeDescriptor       = 1,
         SupplementaryVolumeDescriptor = 2,
+        VolumePartitionDescriptor     = 3,
         VolumeDescriptorSetTerminator = 255
     ),
     "id" / Const(b'CD001'),
@@ -169,19 +180,19 @@ VolumeDescriptor = Struct(
 )
 
 RawVolumeDescriptor = Struct(
-    Embedded(VolumeDescriptor),
+    Embedded(VolumeDescriptorHeader),
     "data"       / Bytes(2014),
 )
 
 BootRecord = Struct(
-    Embedded(VolumeDescriptor),
+    Embedded(VolumeDescriptorHeader),
     "boot_sys_id" / Bytes(32),
     "boot_id" / Bytes(32),
     "boot_sys_use" / Bytes(1977),
 )
 
 PrimaryVolumeDescriptor = Struct(
-    Embedded(VolumeDescriptor),
+    Embedded(VolumeDescriptorHeader),
     Const(b'\x00'),
     "System Identifier" / Bytes(32),
     "Volume Identifier" / Bytes(32),
@@ -217,9 +228,9 @@ PrimaryVolumeDescriptor = Struct(
     "Reserved" / Bytes(653),
 )
 
-VolumeDescriptorParser = Union(
-    "VolumeDescriptor" / VolumeDescriptor,
-    "PrimaryVolumeDescriptor" / Optional(PrimaryVolumeDescriptor),
-    "BootRecord" / Optional(BootRecord),
-    "RawVolumeDescriptor" / Optional(RawVolumeDescriptor),
-)
+# VolumeDescriptorParser = Union(
+#     "VolumeDescriptor" / VolumeDescriptor,
+#     "PrimaryVolumeDescriptor" / Optional(PrimaryVolumeDescriptor),
+#     "BootRecord" / Optional(BootRecord),
+#     "RawVolumeDescriptor" / Optional(RawVolumeDescriptor),
+# )
