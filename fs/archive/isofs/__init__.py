@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 
 import os
 import io
+import re
 import six
 import construct
 
@@ -192,21 +193,27 @@ class ISOReadFS(base.ArchiveReadFS):
             defined as ``\x00`` and ``\x01``) are ignored.
         """
 
+        encoding = 'utf-16-be' if self._joliet else 'ascii'
+        block_parser = structs.DirectoryBlock(self._blocksize, encoding)
+
         # Get the main directory block
         extent = self._get_block(block_id)
-        block = structs.DirectoryBlock(self._blocksize).parse(extent)
-        block.records = block.records[2:] # NB: remove '\x01' and '\x02'
+        records = block_parser.parse(extent)
+        from pprint import pprint
+        pprint(records)
+        records = records[2:]
 
-        while block.records:
-            for record in block.records:
+        while records:
+            for record in records:
                 # Stop iterator if we enter another directory
-                if record['File Identifier'] in (b'\x00', b'\x01'):
+                print(record['File Identifier'])
+                if record['File Identifier'] in ('\x00', '\x01'):
                     return
                 yield record
 
             # Attempt to explore adjacent block
             extent = self._handle.read(self._blocksize)
-            block = structs.DirectoryBlock(self._blocksize).parse(extent)
+            records = block_parser.parse(extent)
 
     def _find(self, path):
         for subpath in recursepath(path):
@@ -237,7 +244,7 @@ class ISOReadFS(base.ArchiveReadFS):
 
         # FIXME: other namespaces
         info = {'basic': {
-            'name': name.lower() if name != '\0' else '',
+            'name': name.lower() if name not in '\x01\x00' else '',
             'is_dir': record['Flags'].is_dir,
         }}
 
@@ -251,12 +258,8 @@ class ISOReadFS(base.ArchiveReadFS):
         return Info(info)
 
     def _make_name(self, name):
-        if name in (b'\x00', b'\x01'):
-            name = name.decode('ascii')
-        elif self._joliet:
-            name = name.decode('utf-16-be')
-        else:
-            name = name.decode('ascii').split(';')[0].rstrip('.').lower()
+        if not self._joliet:
+            name = re.sub(r'\.?;\d$', '', name).lower()
         return name
 
     def getmeta(self, namespace="standard"):
