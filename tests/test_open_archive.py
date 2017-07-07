@@ -16,7 +16,7 @@ from fs.wrap import WrapReadOnly
 from fs.opener import _errors as errors
 from fs.archive.zipfs import ZipFS
 from fs.archive.tarfs import TarFS, TarFile
-from fs.archive.isofs import ISOReadFS
+# from fs.archive.isofs import ISOReadFS
 from fs.archive._utils import import_from_names
 
 lzma = import_from_names('lzma', 'backports.lzma')
@@ -110,15 +110,15 @@ class TestOpenArchive(unittest.TestCase):
             with fs.archive.open_archive('mem://', 'archive.txz'):
                 pass
 
-    def test_iso(self):
-
-        test_dir = os.path.dirname(os.path.abspath(__file__))
-        resources_dir = os.path.join(test_dir, 'resources')
-
-        with fs.open_fs(resources_dir) as resources_fs:
-            try:
-                with fs.archive.open_archive(resources_fs, 'test.iso') as iso_fs:
-                    self.assertIsInstance(iso_fs, ISOReadFS)
-                    self.assertFalse(iso_fs._handle.writable())
-            except errors.Unsupported:
-                self.skipTest('iso support is not enabled')
+    # def test_iso(self):
+    #
+    #     test_dir = os.path.dirname(os.path.abspath(__file__))
+    #     resources_dir = os.path.join(test_dir, 'resources')
+    #
+    #     with fs.open_fs(resources_dir) as resources_fs:
+    #         try:
+    #             with fs.archive.open_archive(resources_fs, 'test.iso') as iso_fs:
+    #                 self.assertIsInstance(iso_fs, ISOReadFS)
+    #                 self.assertFalse(iso_fs._handle.writable())
+    #         except errors.Unsupported:
+    #             self.skipTest('iso support is not enabled')

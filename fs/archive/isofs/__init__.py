@@ -1,302 +1,289 @@
 # coding: utf-8
-"""ISO archive read-only filesystem.
-"""
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import os
 import io
+import os
 import re
+import operator
+
 import six
-import construct
+import pycdlib
+
+from pycdlib.pycdlibexception import PyCdlibException
+
+from .._utils import writable_path
 
 from ... import errors
-from ...enums import Seek
 from ...base import FS
+from ...mode import Mode
+from ...path import basename, dirname, join, iteratepath, split
 from ...info import Info
-from ...path import join, recursepath
-from ...tempfs import TempFS
-from ...memoryfs import MemoryFS
+from ...enums import Seek
 from ..._fscompat import fsdecode, fspath
 
-from .. import base
-
-from . import structs
-
-
-class ISOReadFile(io.RawIOBase):
-
-    def __init__(self, fs, record):
-        self._fs = fs
-        self._handle = fs._handle
-        self._record = record
-        self._start = record['Location of Extent'] * fs._blocksize
-        self._end = self._start + record['Data Length']
-        self._position = 0
-
-    @property
-    def name(self):
-        return self._record['File Identifier'].split(b';')[0].decode('utf-8')
-
-    def read1(self, size=-1):
-        if size == -1 or size + self._position > len(self):
-            size = len(self) - self._position
-        with self._fs._lock:
-            self._handle.seek(self._start + self._position)
-            buffer = self._handle.read(size)
-        self._position += size
-        return buffer
-
-    def read(self, size=-1):
-        return self.read1(size=size)
-
-    def __len__(self):
-        return self._record['Data Length']
-
-    def readable(self):
-        return True
-
-    def seek(self, offset, whence=Seek.set):
-
-        if whence == Seek.set:
-            if offset > len(self):
-                offset = len(self)
-            elif offset < 0:
-                offset = 0
-            with self._fs._lock:
-                self._handle.seek(self._start + offset)
-                self._position = offset
-
-        if whence == Seek.current:
-            if offset + self._start + self._position > self._end:
-                offset = self._end - self._position - self._start
-            elif offset + self._start + self._position < 0:
-                offset = - self._start - self._position
-            with self._fs._lock:
-                self._handle.seek(self._start + self._position + offset)
-                self._position += offset
-
-        if whence == Seek.end:
-            if offset > 0:
-                offset = 0
-            elif -offset > len(self):
-                offset = -len(self)
-            with self._fs._lock:
-                self._handle.seek(self._end + offset)
-                self._position += offset
-
-        return self._position
-
-    def seekable(self):
-        return True
-
-    def tell(self):
-        return self._position
-
-    def tellable(self):
-        return True
-
-    def writable(self):
-        return False
+from . import names
+from .utils import iget
 
 
-class ISOReadFS(base.ArchiveReadFS):
 
-    _meta = {
-        'standard': {
-            'case_insensitive': True, # FIXME : is it ?
-            'network': False,
-            'read_only': True,
-            'supports_rename': False,
-            'thread_safe': False, # FIXME: is it ?
-            'unicode_paths': False,
-            'invalid_path_chars': '\x00\x01',
-            'virtual': False,
-            'max_path_length': None,
-            'max_sys_path_length': None,
-        },
-        # 'archive': {
-        #     # IN LEVEL 1
-        #     # 'max_dirname_length': 8
-        #     # 'max_filename_length': 12
-        #     # IN LEVEL 3
-        #     'max_dirname_length': 31   # in
-        #     'max_filename_length': 30, # in Level 3
-        #     # IN ENHANCED VOLUME DESCRIPTOR
-        #     # 'max_filename_length': 207
-        #     # 'max_dirname_length': 207
-        #     #
-        #     'max_depth': 8,
-        #     'na'
-        # }
-    }
+class ISOFS(FS):
 
-    def __init__(self, handle, **options):
-        """Create a new read-only filesystem from an ISO image byte stream.
+
+    # def _make_iso_name(self, name, directory=False):
+    #     basename, extension = splitext(name)
+
+    def _get_iso_path(self, numpath):
+        components = ['/']
+        current = self._cd.get_entry('/')
+        for num in numpath:
+            current = iget(current.children, num)
+            components.append(names.get_iso_name(current, False))
+        return join(*components)
+
+    def _get_joliet_path(self, numpath):
+        components = ['/']
+        current = self._cd.get_entry('/', True)
+        for num in numpath:
+            current = iget(current.children, num)
+            components.append(names.get_joliet_name(current))
+        return join(*components)
+
+    def _get_numpath(self, path):
+        """Get the numbered path to a resource from a path.
+
+        A numbered path intends to solve compatibility issues in ISO images
+        due to the multiple file hierarchies that coexist in parallel. It
+        expects the same file to come in the same position regardless of the
+        examined hierarchy. By refering the entries in the filesystem with
+        their *numbered path* instead of their *path*, the same entry can be
+        found quickly in both of the hierarchies.
+
+        To Do:
+            Avoid recursing from '/' if an intermediary directory is found
+            in the path table (if '/a/b/c' is in the path table, then finding
+            the numbered path of '/a/b/c/d' should be a single step).
+
+        See also:
+            `_get_record_from_numpath` to actually get the record referenced
+            to by a numbered path.
         """
+        _path = self.validatepath(path)
 
-        super(ISOReadFS, self).__init__(handle)
+        if _path not in self._path_table:
 
-        self._joliet = False
-        self._rockridge = False
+            current = self._cd.get_entry('/', self._joliet_only)
+            numpath = []
 
-        try:
-            descs = list(self._descriptors())
-            pvd = next(d for d in descs if d.type=='PrimaryVolumeDescriptor')
-            svd = next(
-                (d for d in descs if d.type=='SupplementaryVolumeDescriptor'),
-                None,
-            )
-        except StopIteration:
-            raise errors.CreateFailed(
-                'could not find primary volume descriptor')
-        except construct.core.ConstructError as ce:
-            raise errors.CreateFailed(
-                'error occured while parsing: {}'.format(ce))
+            for component in iteratepath(_path):
+                children = iter(enumerate(current.children))
+                index, child = next(children)
 
-        self._blocksize = pvd['Logical Block Size']
+                while child is not None and self._get_name(child) != component:
+                    index, child = next(children, (-1, None))
 
-        if svd is not None:
-            self._path_table = {'/': svd['Root Directory Record']}
-            self._joliet = True
-        else:
-            self._path_table = {'/': pvd['Root Directory Record']}
+                    if child is not None:
+                        if child.is_dot() or child.is_dotdot():
+                            continue
+                    else:
+                        raise errors.ResourceNotFound(path)
 
-    def _descriptors(self):
-        """Yield the descriptors of the ISO image.
+                numpath.append(index)
+                current = child
+
+            self._path_table[_path] = numpath
+
+        return self._path_table[_path]
+
+    def _get_record_from_numpath(self, numpath, joliet=False):
+        """Get the record located at the given numpath.
         """
-        # Go to initial descriptor adress
-        self._handle.seek(16 * 2048)
-        # Read all descriptors until the terminator
-        while 'Terminator not encountered':
-            # Read the next block
-            block = self._handle.read(2048)
-            # Peek at the descriptor header,
-            meta = construct.Peek(structs.VolumeDescriptorHeader).parse(block)
-            # If we could not find a valid descriptor header: stop iteration
-            if meta is None:
-                break
-            # get the struct to use
-            desc_parser = getattr(
-                structs, meta.type, structs.RawVolumeDescriptor)
-            # Yield the right descriptor struct
-            yield desc_parser.parse(block)
-            # Stop at the terminator
-            if meta.type == 'VolumeDescriptorSetTerminator':
-                break
-
-    def _directory_records(self, block_id):
-        """Yield the records within a directory.
-
-        Note:
-            ``.`` and ``..`` (which in the ISO9660 standard are
-            defined as ``\x00`` and ``\x01``) are ignored.
-        """
-
-        encoding = 'utf-16-be' if self._joliet else 'ascii'
-        block_parser = structs.DirectoryBlock(self._blocksize, encoding)
-
-        # Get the main directory block
-        extent = self._get_block(block_id)
-        records = block_parser.parse(extent)
-        from pprint import pprint
-        pprint(records)
-        records = records[2:]
-
-        while records:
-            for record in records:
-                # Stop iterator if we enter another directory
-                print(record['File Identifier'])
-                if record['File Identifier'] in ('\x00', '\x01'):
-                    return
-                yield record
-
-            # Attempt to explore adjacent block
-            extent = self._handle.read(self._blocksize)
-            records = block_parser.parse(extent)
-
-    def _find(self, path):
-        for subpath in recursepath(path):
-
-            record = self._path_table.get(subpath)
-            if record is None:
-                raise errors.ResourceNotFound(subpath)
-
-            for r in self._directory_records(record["Location of Extent"]):
-                record_name = self._make_name(r['File Identifier'])
-                record_path = join(subpath, record_name.lower())
-                self._path_table[record_path] = r
-
-    def _get_block(self, block_id):
-        self._handle.seek(self._blocksize * block_id)
-        return self._handle.read(self._blocksize)
-
-    def _get_record(self, path):
-        path = path.lower()
-        if path not in self._path_table:
-            self._find(path)
-        return self._path_table[path]
+        self.check()
+        current = self._cd.get_entry('/', joliet)
+        for num in numpath:
+            current = iget(current.children, num)
+        return current
 
     def _make_info_from_record(self, record, namespaces=None):
         namespaces = namespaces or ()
 
-        name = self._make_name(record['File Identifier'])
+        name = '' if record.file_identifier() in b'/' \
+          else self._get_name(record)
 
-        # FIXME: other namespaces
-        info = {'basic': {
-            'name': name.lower() if name not in '\x01\x00' else '',
-            'is_dir': record['Flags'].is_dir,
-        }}
-
-        if 'details' in namespaces:
-            info['details'] = {
-                'size': record['Data Length'],
-            }
-        if 'iso' in namespaces:
-            info['iso'] = dict(record)
-
+        info = {'basic': {'name': name, 'is_dir': record.is_dir()}}
         return Info(info)
 
-    def _make_name(self, name):
-        if not self._joliet:
-            name = re.sub(r'\.?;\d$', '', name).lower()
-        return name
 
-    def getmeta(self, namespace="standard"):
-        meta = super(ISOReadFS, self).getmeta(namespace)
-        if namespace == 'standard':
-            meta['unicode_paths'] = self._joliet or self._rockridge
-        return meta
+    def __init__(self, handle, **options):
 
-    def openbin(self, path, mode='r', buffering=-1, **options):
-        if not mode.startswith('r'):
-            self._on_modification_attempt(path)
+        self._cd = pycdlib.PyCdlib()
+        self._cd.open(handle, **options)
 
-        _path = self.validatepath(path)
-        record = self._get_record(_path)
+        self._joliet = self._cd.joliet_vd is not None
+        self._rridge = self._cd.rock_ridge is not None
+        self._joliet_only = self._joliet and not self._rridge
 
-        if record['Flags'].is_dir:
-            raise errors.FileExpected(path)
+        self._path_table = {}
 
-        return ISOReadFile(self, record)
+        if self._rridge:
+            self._get_name = names.get_rridge_name
+            #self._get_record = self._find_rridge_record
+        elif self._joliet:
+            self._get_name = names.get_joliet_name
+            #self._get_record = self._find_joliet_record
+        else:
+            self._get_name = names.get_iso_name
+            #self._get_record = self._find_iso_record
+
+    def listdir(self, path):
+        return [info.name for info in self.scandir(path)]
 
     def scandir(self, path, namespaces=None, page=None):
         _path = self.validatepath(path)
-        record = self._get_record(_path)
 
-        if not record['Flags'].is_dir:
+        numpath = self._get_numpath(path)
+        record = self._get_record_from_numpath(numpath, self._joliet_only)
+
+        if not record.is_dir():
             raise errors.DirectoryExpected(path)
 
-        for record in self._directory_records(record["Location of Extent"]):
-            name = self._make_name(record['File Identifier'])
-            self._path_table[join(_path, name)] = record
-            yield self._make_info_from_record(record, namespaces)
-
-    def listdir(self, path):
-        return [entry.name for entry in self.scandir(path)]
+        for child in record.children:
+            if not child.is_dot() and not child.is_dotdot():
+                yield self._make_info_from_record(child, namespaces)
 
     def getinfo(self, path, namespaces=None):
         _path = self.validatepath(path)
-        record = self._get_record(_path)
+
+        if path in '/':
+            #record = self._cd.get_entry('/', self._joliet_only)
+            return Info({'basic': {'name': '', 'is_dir': True}})
+
+        numpath = self._get_numpath(path)
+        record = self._get_record_from_numpath(numpath, self._joliet_only)
 
         return self._make_info_from_record(record, namespaces)
+
+    def openbin(self, path, mode='r', buffering=-1, **options):
+        pass
+
+    def makedir(self, path, permissions=None, recreate=False):
+        _path = self.validatepath(path)
+
+        if self.exists(_path):
+            if not recreate:
+                raise errors.DirectoryExists(path)
+
+        else:
+
+            parent, name = split(_path)
+
+            parent_numpath = self._get_numpath(parent)
+            parent_record = self._get_record_from_numpath(parent_numpath)
+
+            try:
+                pycdlib.pycdlib.check_iso9660_directory(
+                    fullname=name.encode('ascii'),
+                    interchange_level=self._cd.interchange_level
+                )
+
+            except (PyCdlibException, UnicodeEncodeError):
+
+                #if self._rridge:
+
+                #self._get_numpath(parent)
+
+                iso_name = names.new_rridge_directory_name(name, parent_record)
+
+                print(iso_name)
+
+                self._cd.add_directory(
+                    iso_path=join(parent, iso_name),
+                    rr_name=name if self._rridge else None,
+                    joliet_path=_path if self._joliet else None
+                )
+
+
+                # elif self._joliet:
+                #
+                #     pass
+
+
+
+                #else:
+                #six.raise_from(errors.InvalidPath(path), None)
+
+
+
+
+
+
+            else:  # Name is ok for what we want
+
+                self._cd.add_directory(
+                    iso_path=_path.upper(),
+                    rr_name=name if self._rridge else None,
+                    joliet_path=_path if self._joliet else None
+                )
+
+
+        self._path_table.clear()
+
+        return self.opendir(_path)
+
+
+
+
+
+
+
+
+
+    def remove(self, path):
+        _path = self.validatepath(path)
+
+        numpath = self._get_numpath(_path)
+        record = self._get_record_from_numpath(numpath, False)
+
+        if record.is_dir():
+            raise errors.FileExpected(path)
+
+        iso_path = self._get_iso_path(numpath).upper()
+        rridge_name = names.get_rridge_name(record) if self._rridge else None
+        joliet_path = self._get_joliet_path(numpath) if self._joliet else None
+
+        self._cd.rm_file(iso_path, rridge_name, joliet_path)
+        self._path_table.clear()
+
+    def removedir(self, path):
+        _path = self.validatepath(path)
+
+        if _path in '/':
+            raise errors.RemoveRootError(path)
+
+        numpath = self._get_numpath(_path)
+        record = self._get_record_from_numpath(numpath, False)
+
+        _children_filter = lambda r: (not r.is_dotdot() and not r.is_dot())
+
+        if not record.is_dir():
+            raise errors.DirectoryExpected(path)
+        elif list(filter(_children_filter, record.children)):
+            print(list(filter(_children_filter, record.children))[0].file_identifier())
+            raise errors.DirectoryNotEmpty(path)
+
+        iso_path = self._get_iso_path(numpath).upper()
+        rridge_name =   names.get_rridge_name(record) if self._rridge else None
+        joliet_path = self._get_joliet_path(numpath) if self._joliet else None
+
+        self._cd.rm_directory(iso_path, rridge_name, joliet_path)
+        self._path_table.clear()
+
+
+    def validatepath(self, path):
+        _path = super(ISOFS, self).validatepath(path)
+        if not self._rridge and not self._joliet:
+            _path = _path.lower()
+        return _path
+
+    def setinfo(self, path, info):
+        raise errors.ResourceReadOnly(path)

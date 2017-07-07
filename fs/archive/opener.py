@@ -59,9 +59,6 @@ def open_archive(fs_url, archive):
         six.raise_from(Unsupported(
             'extension {} requires {}'.format(entry_point.name, df.req)), None)
 
-    # if not isinstance(archive_fs, base.ArchiveFS):
-    #     raise TypeError('bad entry point')
-
     try:
         binfile = None
         archive_fs = None
