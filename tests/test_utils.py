@@ -24,9 +24,9 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(_utils.writable_path(__file__))
 
     def test_writable_stream(self):
-        with tempfile.NamedTemporaryFile() as tmp:
+        with tempfile.NamedTemporaryFile(mode='wb+') as tmp:
             self.assertTrue(_utils.writable_stream(tmp))
-            with open(tmp.name) as tmp2:
+            with open(tmp.name, 'rb') as tmp2:
                 self.assertFalse(_utils.writable_stream(tmp2))
 
         buff = io.BytesIO()
