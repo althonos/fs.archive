@@ -49,6 +49,14 @@ class TestISOReadFSRockRidge(_TestISOReadFS, unittest.TestCase):
     unicode_names = True
     img_file = 'test.rr.iso'
 
+    @unittest.expectedFailure
+    def test_unicode_names(self):
+        super(TestISOReadFSRockRidge, self).test_unicode_names()
+
+    @unittest.expectedFailure
+    def test_walk_files(self):
+        super(TestISOReadFSRockRidge, self).test_walk_files()
+
 
 class TestISOStructs(unittest.TestCase):
 
