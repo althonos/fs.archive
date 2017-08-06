@@ -1,4 +1,6 @@
 # coding: utf-8
+"""ISO Disk Image filesystems.
+"""
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
@@ -6,284 +8,198 @@ import io
 import os
 import re
 import operator
+import weakref
 
 import six
 import pycdlib
 
-from pycdlib.pycdlibexception import PyCdlibException
-
-from .._utils import writable_path
-
 from ... import errors
-from ...base import FS
 from ...mode import Mode
-from ...path import basename, dirname, join, iteratepath, split
 from ...info import Info
-from ...enums import Seek
-from ..._fscompat import fsdecode, fspath
+from ...path import recursepath, iteratepath, join, frombase
+from ...enums import ResourceType
 
-from . import names
-from .utils import iget
-
+from .. import base
 
 
-class ISOFS(FS):
+class ISOReadFS(base.ArchiveReadFS):
 
+    _meta = {
+        'standard': {
+            'case_insensitive': True,
+            'network': False,
+            'read_only': True,
+            'supports_rename': False,
+            'thread_safe': True,
+            'unicode_paths': True,
+            'virtual': False,
+            'max_path_length': None,
+            'max_sys_path_length': None,
+            'invalid_path_chars': '\0',
+        },
+    }
 
-    # def _make_iso_name(self, name, directory=False):
-    #     basename, extension = splitext(name)
+    def _get_name_from_entry(self, entry):
+        if self._rock_ridge:
+            return entry.rock_ridge.name().decode('utf-8')
+        elif self._joliet:
+            return entry.file_identifier().decode('utf-16be')
+        else:
+            return entry.file_identifier().decode('ascii').lower()
 
-    def _get_iso_path(self, numpath):
-        components = ['/']
-        current = self._cd.get_entry('/')
-        for num in numpath:
-            current = iget(current.children, num)
-            components.append(names.get_iso_name(current, False))
-        return join(*components)
+    def _get_cd_entry(self, path):
 
-    def _get_joliet_path(self, numpath):
-        components = ['/']
-        current = self._cd.get_entry('/', True)
-        for num in numpath:
-            current = iget(current.children, num)
-            components.append(names.get_joliet_name(current))
-        return join(*components)
+        # Get the closest parent of the requested path
+        for subpath in recursepath(path):
+            if subpath in self._path_table:
+                entry = self._path_table[subpath]
+                _path = frombase(subpath, path)
+                break
 
-    def _get_numpath(self, path):
-        """Get the numbered path to a resource from a path.
+        # If the actual entry is found, return it directly
+        if not _path:
+            return entry
 
-        A numbered path intends to solve compatibility issues in ISO images
-        due to the multiple file hierarchies that coexist in parallel. It
-        expects the same file to come in the same position regardless of the
-        examined hierarchy. By refering the entries in the filesystem with
-        their *numbered path* instead of their *path*, the same entry can be
-        found quickly in both of the hierarchies.
+        # Else, recurse down from the closest transitive parent entry
+        for name in iteratepath(_path):
 
-        To Do:
-            Avoid recursing from '/' if an intermediary directory is found
-            in the path table (if '/a/b/c' is in the path table, then finding
-            the numbered path of '/a/b/c/d' should be a single step).
+            # Get the content of the CWD and store each entry in the path table
+            for child in entry.children:
+                if not child.is_dot() and not child.is_dotdot():
+                    child_name = self._get_name_from_entry(child)
+                    child_path = join(subpath, child_name)
+                    self._path_table[child_path] = child
 
-        See also:
-            `_get_record_from_numpath` to actually get the record referenced
-            to by a numbered path.
-        """
-        _path = self.validatepath(path)
+            # Raise an error if no entry is found with the given name
+            entry = self._path_table.get(join(subpath, name), None)
+            if entry is None:
+                raise errors.ResourceNotFound(path)
 
-        if _path not in self._path_table:
+            # Raise an error if the non-final entry is not a directory
+            if path != join(subpath, name) and not entry.is_dir():
+                raise errors.DirectoryExpected(join(subpath, name))
 
-            current = self._cd.get_entry('/', self._joliet_only)
-            numpath = []
+            # Move one level deeper
+            subpath = join(subpath, name)
 
-            for component in iteratepath(_path):
-                children = iter(enumerate(current.children))
-                index, child = next(children)
+        return entry
 
-                while child is not None and self._get_name(child) != component:
-                    index, child = next(children, (-1, None))
-
-                    if child is not None:
-                        if child.is_dot() or child.is_dotdot():
-                            continue
-                    else:
-                        raise errors.ResourceNotFound(path)
-
-                numpath.append(index)
-                current = child
-
-            self._path_table[_path] = numpath
-
-        return self._path_table[_path]
-
-    def _get_record_from_numpath(self, numpath, joliet=False):
-        """Get the record located at the given numpath.
-        """
-        self.check()
-        current = self._cd.get_entry('/', joliet)
-        for num in numpath:
-            current = iget(current.children, num)
-        return current
-
-    def _make_info_from_record(self, record, namespaces=None):
+    def _get_info_from_entry(self, entry, namespaces=None):
         namespaces = namespaces or ()
 
-        name = '' if record.file_identifier() in b'/' \
-          else self._get_name(record)
+        info = {'basic': {
+            'name': self._get_name_from_entry(entry),
+            'is_dir': entry.is_dir()
+        }}
 
-        info = {'basic': {'name': name, 'is_dir': record.is_dir()}}
+        # TODO: the rest
+        if 'details' in namespaces:
+            info['details'] = details = {
+                'size': entry.data_length,
+                'type': ResourceType.directory if entry.is_dir() else ResourceType.file,
+            }
+
+            if self._rock_ridge and entry.rock_ridge.is_symlink():
+                details['type'] = ResourceType.symlink
+
+
         return Info(info)
 
-
     def __init__(self, handle, **options):
-
+        super(ISOReadFS, self).__init__(handle, **options)
         self._cd = pycdlib.PyCdlib()
-        self._cd.open(handle, **options)
+        self._cd.open_fp(handle)
 
         self._joliet = self._cd.joliet_vd is not None
-        self._rridge = self._cd.rock_ridge is not None
-        self._joliet_only = self._joliet and not self._rridge
+        self._rock_ridge = self._cd.rock_ridge is not None
+        self._joliet_only = self._joliet and not self._rock_ridge
 
-        self._path_table = {}
-
-        if self._rridge:
-            self._get_name = names.get_rridge_name
-            #self._get_record = self._find_rridge_record
-        elif self._joliet:
-            self._get_name = names.get_joliet_name
-            #self._get_record = self._find_joliet_record
-        else:
-            self._get_name = names.get_iso_name
-            #self._get_record = self._find_iso_record
-
-    def listdir(self, path):
-        return [info.name for info in self.scandir(path)]
-
-    def scandir(self, path, namespaces=None, page=None):
-        _path = self.validatepath(path)
-
-        numpath = self._get_numpath(path)
-        record = self._get_record_from_numpath(numpath, self._joliet_only)
-
-        if not record.is_dir():
-            raise errors.DirectoryExpected(path)
-
-        for child in record.children:
-            if not child.is_dot() and not child.is_dotdot():
-                yield self._make_info_from_record(child, namespaces)
+        self._path_table = weakref.WeakValueDictionary()
+        self._path_table['/'] = self._cd.get_entry('/', self._joliet_only)
 
     def getinfo(self, path, namespaces=None):
         _path = self.validatepath(path)
 
-        if path in '/':
-            #record = self._cd.get_entry('/', self._joliet_only)
-            return Info({'basic': {'name': '', 'is_dir': True}})
+        if _path in '/':
+            return Info({
+                'basic': {'name': '', 'is_dir': True},
+                'details': {'size': 2048, 'type': ResourceType.directory}
+            })
+        else:
+            entry = self._get_cd_entry(_path)
+            return self._get_info_from_entry(entry)
 
-        numpath = self._get_numpath(path)
-        record = self._get_record_from_numpath(numpath, self._joliet_only)
+    def scandir(self, path, namespaces=None, page=None):
+        _path = self.validatepath(path)
 
-        return self._make_info_from_record(record, namespaces)
+        entry = self._get_cd_entry(_path)
+
+        if entry.is_file():
+            raise errors.DirectoryExpected(path)
+
+        for child in entry.children:
+            if not child.is_dot() and not child.is_dotdot():
+                yield self._get_info_from_entry(child, namespaces)
+
+    def listdir(self, path):
+        return [child.name for child in self.scandir(path)]
 
     def openbin(self, path, mode='r', buffering=-1, **options):
-        pass
-
-    def makedir(self, path, permissions=None, recreate=False):
         _path = self.validatepath(path)
+        _mode = Mode(mode)
 
-        if self.exists(_path):
-            if not recreate:
-                raise errors.DirectoryExists(path)
+        if _mode.writing:
+            self._on_modification_attempt(path)
 
-        else:
-
-            parent, name = split(_path)
-
-            parent_numpath = self._get_numpath(parent)
-            parent_record = self._get_record_from_numpath(parent_numpath)
-
-            try:
-                pycdlib.pycdlib.check_iso9660_directory(
-                    fullname=name.encode('ascii'),
-                    interchange_level=self._cd.interchange_level
-                )
-
-            except (PyCdlibException, UnicodeEncodeError):
-
-                #if self._rridge:
-
-                #self._get_numpath(parent)
-
-                iso_name = names.new_rridge_directory_name(name, parent_record)
-
-                print(iso_name)
-
-                self._cd.add_directory(
-                    iso_path=join(parent, iso_name),
-                    rr_name=name if self._rridge else None,
-                    joliet_path=_path if self._joliet else None
-                )
-
-
-                # elif self._joliet:
-                #
-                #     pass
-
-
-
-                #else:
-                #six.raise_from(errors.InvalidPath(path), None)
-
-
-
-
-
-
-            else:  # Name is ok for what we want
-
-                self._cd.add_directory(
-                    iso_path=_path.upper(),
-                    rr_name=name if self._rridge else None,
-                    joliet_path=_path if self._joliet else None
-                )
-
-
-        self._path_table.clear()
-
-        return self.opendir(_path)
-
-
-
-
-
-
-
-
-
-    def remove(self, path):
-        _path = self.validatepath(path)
-
-        numpath = self._get_numpath(_path)
-        record = self._get_record_from_numpath(numpath, False)
-
-        if record.is_dir():
+        if self.isdir(_path):
             raise errors.FileExpected(path)
+        elif not self.isfile(_path):
+            raise errors.ResourceNotFound(path)
 
-        iso_path = self._get_iso_path(numpath).upper()
-        rridge_name = names.get_rridge_name(record) if self._rridge else None
-        joliet_path = self._get_joliet_path(numpath) if self._joliet else None
+        raise NotImplementedError()
 
-        self._cd.rm_file(iso_path, rridge_name, joliet_path)
-        self._path_table.clear()
-
-    def removedir(self, path):
-        _path = self.validatepath(path)
-
-        if _path in '/':
-            raise errors.RemoveRootError(path)
-
-        numpath = self._get_numpath(_path)
-        record = self._get_record_from_numpath(numpath, False)
-
-        _children_filter = lambda r: (not r.is_dotdot() and not r.is_dot())
-
-        if not record.is_dir():
-            raise errors.DirectoryExpected(path)
-        elif list(filter(_children_filter, record.children)):
-            print(list(filter(_children_filter, record.children))[0].file_identifier())
-            raise errors.DirectoryNotEmpty(path)
-
-        iso_path = self._get_iso_path(numpath).upper()
-        rridge_name =   names.get_rridge_name(record) if self._rridge else None
-        joliet_path = self._get_joliet_path(numpath) if self._joliet else None
-
-        self._cd.rm_directory(iso_path, rridge_name, joliet_path)
-        self._path_table.clear()
+    def getmeta(self, namespace="standard"):
+        meta = self._meta.get(namespace, {})
+        if namespace == "standard" and not (self._rock_ridge or self._joliet):
+            meta['case_insensitive'] = True
+            meta['max_path_length'] = 255
+        return meta
 
 
-    def validatepath(self, path):
-        _path = super(ISOFS, self).validatepath(path)
-        if not self._rridge and not self._joliet:
-            _path = _path.lower()
-        return _path
 
-    def setinfo(self, path, info):
-        raise errors.ResourceReadOnly(path)
+class ISOSaver(base.ArchiveSaver):
+
+    def __init__(self, output, overwrite=False, initial_position=0, **options):
+        super(ISOSaver, self).__init__(output, overwrite, initial_position)
+
+        self.joliet = options.pop('joliet', False)
+        self.rock_ridge = options.pop('rock_ridge', True)
+
+    def _to(self, handle, fs):
+        _cd = pycdlib.PyCdlib()
+        _cd.new(
+            interchange_level=1, sys_ident='', vol_ident='', set_size=1,
+            seqnum=1, log_block_size=2048, vol_set_ident=' ', pub_ident_str='',
+            preparer_ident_str='',
+            app_ident_str='PyCdlib (C) 2015-2016 Chris Lalancette',
+            copyright_file='', abstract_file='', bibli_file='',
+            vol_expire_date=None, app_use='', joliet=False, rock_ridge=None,
+            xa=False
+        )
+
+        try:
+            for path, info in fs.walk.info(namespaces=('details', 'access', 'stat')):
+                pass
+
+        finally:
+            if isinstance(handle, io.IOBase):
+                _cd.write_fp(handle)
+            else:
+                _cd.write(handle)
+
+
+
+
+class ISOFS(base.ArchiveFS):
+    _read_fs_cls = ISOReadFS
+    _saver_cls = ISOSaver
