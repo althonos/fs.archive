@@ -17,9 +17,77 @@ from ... import errors
 from ...mode import Mode
 from ...info import Info
 from ...path import recursepath, iteratepath, join, frombase
-from ...enums import ResourceType
+from ...enums import ResourceType, Seek
 
 from .. import base
+
+
+
+class _ISOFile(io.RawIOBase):
+
+    def __init__(self, fs, entry):
+
+        self._fs = fs
+        self._cd = fs._cd
+        self._entry = entry
+
+        with self._fs.lock():
+            self._handle, self._size = \
+                entry.open_data(fs._cd.pvd.logical_block_size())
+            self._start = self._handle.tell()
+
+        self._position = 0
+        self._end = self._start + self._size
+
+    def readable(self):
+        return True
+
+    def writable(self):
+        return False
+
+    def read(self, size=-1):
+        if size == -1 or self._position + size > self._size:
+            size = self._size - self._position
+        return self._handle.read(size)
+
+    def seek(self, offset, whence=Seek.set):
+
+        if whence == Seek.set:
+            if whence < 0:
+                raise ValueError("Negative seek position {}".format(whence))
+            self._position = min(offset, self._size)
+
+        elif whence == Seek.current:
+            self._position = max(min(self._position + offset, self._size), 0)
+
+        elif whence == Seek.end:
+            if whence > 0:
+                raise ValueError("Positive seek position {}".format(whence))
+            self._position = max(0, self._position + whence)
+
+        else:
+            raise ValueError(
+                "Invalid whence ({}, should be {}, {} or {})".format(
+                    whence, Seek.set, Seek.current, Seek.end
+                )
+            )
+
+        return self._position
+
+
+
+    def seekable(self):
+        return True
+
+    def tell(self):
+        return self._position
+
+    def tellable(self):
+        return True
+
+
+
+
 
 
 class ISOReadFS(base.ArchiveReadFS):
@@ -108,7 +176,11 @@ class ISOReadFS(base.ArchiveReadFS):
     def __init__(self, handle, **options):
         super(ISOReadFS, self).__init__(handle, **options)
         self._cd = pycdlib.PyCdlib()
-        self._cd.open_fp(handle)
+
+        if isinstance(handle, io.IOBase):
+            self._cd.open_fp(handle)
+        else:
+            self._cd.open(handle)
 
         self._joliet = self._cd.joliet_vd is not None
         self._rock_ridge = self._cd.rock_ridge is not None
@@ -156,15 +228,21 @@ class ISOReadFS(base.ArchiveReadFS):
         elif not self.isfile(_path):
             raise errors.ResourceNotFound(path)
 
-        raise NotImplementedError()
+        entry = self._get_cd_entry(path)
+        return _ISOFile(self, entry)
 
     def getmeta(self, namespace="standard"):
-        meta = self._meta.get(namespace, {})
+        meta = self._meta.get(namespace, {}).copy()
         if namespace == "standard" and not (self._rock_ridge or self._joliet):
             meta['case_insensitive'] = True
             meta['max_path_length'] = 255
         return meta
 
+    def getsize(self, path):
+        _path = self.validatepath(path)
+
+        entry = self._get_cd_entry(_path)
+        return entry.file_length()
 
 
 class ISOSaver(base.ArchiveSaver):
@@ -189,7 +267,11 @@ class ISOSaver(base.ArchiveSaver):
 
         try:
             for path, info in fs.walk.info(namespaces=('details', 'access', 'stat')):
-                pass
+
+                if info.is_dir:
+                    _cd.add_directory(path)
+                else:
+                    _cd.add_fp(fs.openbin(path), info.size, path)
 
         finally:
             if isinstance(handle, io.IOBase):
@@ -197,7 +279,7 @@ class ISOSaver(base.ArchiveSaver):
             else:
                 _cd.write(handle)
 
-
+            _cd.close()
 
 
 class ISOFS(base.ArchiveFS):

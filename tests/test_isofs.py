@@ -4,103 +4,129 @@ from __future__ import unicode_literals
 
 import os
 import io
+import pycdlib
+import tempfile
 import unittest
-import construct
 
+from six.moves import filterfalse
+from six.moves.queue import Queue
+
+import fs.test
+import fs.wrap
+import fs.errors
 import fs.memoryfs
 import fs.archive.isofs
 
-import fs.test
+from fs.path import relpath, join, forcedir, abspath, recursepath
+from fs.archive.test import ArchiveReadTestCases, ArchiveIOTestCases
 
-from fs.archive.test import ArchiveReadTestCases
-# from fs.archive.isofs import structs
+
+def iso_compress(handle, source_fs):
+    if hasattr(handle, 'seek') and handle.seekable():
+        handle.seek(0)
+    saver = fs.archive.isofs.ISOSaver(handle, False)
+    saver.save(source_fs)
+
+
+def iso_name(entry, joliet=False, rock_ridge=False):
+    if entry.file_identifier() in b'/':
+        return '/'
+    elif rock_ridge:
+        return entry.rock_ridge.name().decode('utf-8').rsplit(';1').rsplit('.')
+    elif joliet:
+        return entry.file_identifier().decode('utf-16be')
+    return entry.file_identifier().decode('ascii')
+
+
+def iso_path(iso_entry, joliet=False, rock_ridge=False):
+    path = iso_name(iso_entry, joliet, rock_ridge)
+    while iso_entry.parent is not None:
+        path = join(iso_name(iso_entry.parent, joliet, rock_ridge), path)
+        iso_entry = iso_entry.parent
+    return abspath(path)
 
 
 class TestISOFS(fs.test.FSTestCases, unittest.TestCase):
 
     def make_fs(self):
-        handle = io.BufferedWriter(io.BytesIO())
+        self.tempfile = tempfile.mktemp()
+        return fs.archive.isofs.ISOFS(self.tempfile)
+
+    def destroy_fs(self, fs):
+        fs.close()
+        if os.path.exists(self.tempfile):
+            os.remove(self.tempfile)
+        del self.tempfile
+
+
+class TestISOReadFS(ArchiveReadTestCases, unittest.TestCase):
+
+    #long_names = True
+    #unicode_names = True
+
+    compress = staticmethod(iso_compress)
+    make_source_fs = staticmethod(fs.memoryfs.MemoryFS)
+    _archive_read_fs = fs.archive.isofs.ISOReadFS
+
+    @staticmethod
+    def remove_archive(handle):
+        handle.close()
+
+    def setUp(self):
+        handle = io.BytesIO()
+        super(TestISOReadFS, self).setUp(handle)
+
+    def test_create_failed(self):
+        self.assertRaises(fs.errors.CreateFailed, fs.archive.isofs.ISOFS, 1)
+
+
+class TestISOFSio(ArchiveIOTestCases, unittest.TestCase):
+
+    compress = staticmethod(iso_compress)
+    make_source_fs = staticmethod(fs.memoryfs.MemoryFS)
+    _archive_fs = fs.archive.isofs.ISOFS
+
+    @staticmethod
+    def make_source_fs():
+        return fs.memoryfs.MemoryFS()
+
+    @staticmethod
+    def load_archive(handle):
         return fs.archive.isofs.ISOFS(handle)
 
+    @staticmethod
+    def iter_entries(handle):
 
+        cd = pycdlib.PyCdlib()
 
-#
-# class _TestISOReadFS(ArchiveReadTestCases):
-#
-#     long_names = False
-#     unicode_names = False
-#
-#     make_source_fs = staticmethod(fs.memoryfs.MemoryFS)
-#     _archive_read_fs = fs.archive.isofs.ISOReadFS
-#
-#     def compress(self, handle, source_fs):
-#         tests_dir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
-#         resources_path = os.path.join(tests_dir, 'resources')
-#         with open(os.path.join(resources_path, self.img_file), 'rb') as iso_file:
-#             handle.write(iso_file.read())
-#
-#     @staticmethod
-#     def remove_archive(handle):
-#         handle.close()
-#
-#     def setUp(self):
-#         handle = io.BytesIO()
-#         super(_TestISOReadFS, self).setUp(handle)
-#
-#
-#
-# class TestISOReadFSLevel1(_TestISOReadFS, unittest.TestCase):
-#     img_file = 'test.iso'
-#
-# class TestISOReadFSJoliet(_TestISOReadFS, unittest.TestCase):
-#     unicode_names = True
-#     img_file = 'test.joliet.iso'
-#
-# class TestISOReadFSRockRidge(_TestISOReadFS, unittest.TestCase):
-#     unicode_names = True
-#     img_file = 'test.rr.iso'
-#
-#
-# class TestISOStructs(unittest.TestCase):
-#
-#     def test_both_endian(self):
-#
-#         be1 = structs.BothEndian(construct.Int8ul, construct.Int8ub)
-#         self.assertEqual(be1.parse(b'\x01\x01'), 1)
-#         self.assertEqual(be1.build(1), b'\x01\x01')
-#         self.assertEqual(be1.sizeof(), 2)
-#
-#         be2 = structs.BothEndian(construct.Int32sb, construct.Int32sl)
-#         self.assertEqual(be2.parse(b'\xff\xff\xfd\xde\xde\xfd\xff\xff'), -546)
-#         self.assertEqual(be2.build(2048), b'\0\0\x08\0\0\x08\0\0')
-#         self.assertEqual(be2.sizeof(), 8)
-#
-#         be3 = structs.BothEndian(construct.Int8un, construct.Int8un)
-#         self.assertEqual(be3.parse(construct.Int8un.build(99)*2), 99)
-#         self.assertEqual(be3.build(123), construct.Int8un.build(123)*2)
-#
-#         be4 = structs.BothEndian(construct.Int16un, construct.Int16un)
-#         with self.assertRaises(construct.FieldError):
-#             be4.parse(b'\x00\x01\x00\x00')
-#
-#     def test_long_time(self):
-#
-#         lt = structs.LongTime
-#         time1 = structs.LongTime.parse(b'1824041900000000\x0c')
-#         self.assertEqual(time1.year, b'1824')
-#         self.assertEqual(time1.month, b'04')
-#         self.assertEqual(time1.day, b'19')
-#         self.assertEqual(time1.hour, b'00')
-#         self.assertEqual(time1.minute, b'00')
-#         self.assertEqual(time1.second, b'00')
-#         self.assertEqual(time1.hundredths, b'00')
-#         self.assertEqual(time1.gmt_offset, 12)
-#
-#     #def test_long_time_adapter(self):
-#     #    pass
-#
-#     # def test_short_time(self):
-#     #     pass
-#
-#     # def test_short_time_adapter(self):
-#     #     pass
+        if hasattr(handle, 'seek') and handle.seekable():
+            handle.seek(0)
+            cd.open_fp(handle)
+        else:
+            cd.open(handle)
+
+        rock_ridge = cd.rock_ridge is not None
+        joliet = cd.joliet_vd is not None
+        joliet_only = joliet and not rock_ridge
+
+        directories = Queue()
+        directories.put(cd.get_entry('/', joliet_only))
+
+        while not directories.empty():
+            directory = directories.get()
+
+            for child in directory.children:
+                if not child.is_dot() and not child.is_dotdot():
+                    if child.is_dir():
+                        directories.put(child)
+                    yield child
+
+    def iter_files(self, handle):
+        for entry in self.iter_entries(handle):
+            if entry.is_file():
+                yield iso_path(entry)
+
+    def iter_dirs(self, handle):
+        for entry in self.iter_entries(handle):
+            if entry.is_dir():
+                yield iso_path(entry)

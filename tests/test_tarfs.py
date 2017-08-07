@@ -68,10 +68,6 @@ class TestTarFSio(ArchiveIOTestCases, unittest.TestCase):
     _archive_fs = fs.archive.tarfs.TarFS
 
     @staticmethod
-    def make_source_fs():
-        return fs.memoryfs.MemoryFS()
-
-    @staticmethod
     def load_archive(handle):
         return fs.archive.tarfs.TarFS(handle)
 
