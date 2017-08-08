@@ -18,6 +18,7 @@ matrix:
 
 before_install:
 - pip install -U pip setuptools wheel
+- pip install -U http://github.com/clalancette/pycdlib/archive/master.zip
 
 install:
 - pip install '.[all]'
