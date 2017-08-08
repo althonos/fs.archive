@@ -33,8 +33,9 @@ class _ISOFile(io.RawIOBase):
         self._entry = entry
 
         with self._fs.lock():
-            self._handle, self._size = \
-                entry.open_data(fs._cd.pvd.logical_block_size())
+            self._handle, self._size = pycdlib.dr.DROpenData(
+                entry, fs._cd.pvd.logical_block_size()
+            ).__enter__()
             self._start = self._handle.tell()
 
         self._position = 0
