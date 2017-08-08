@@ -4,7 +4,7 @@ fs.archive
 |Source| |PyPI| |Travis| |Codecov| |Codacy| |Format| |License|
 
 .. |Codacy| image:: https://img.shields.io/codacy/grade/eadf418db5a84efd9fa1b470529dcad6/master.svg?style=flat-square&maxAge=300
-   :target: https://www.codacy.com/app/althonos/fs.proxy/dashboard
+   :target: https://www.codacy.com/app/althonos/fs.archive/dashboard
 
 .. |Travis| image:: https://img.shields.io/travis/althonos/fs.archive/master.svg?style=flat-square&maxAge=300
    :target: https://travis-ci.org/althonos/fs.archive/branches
