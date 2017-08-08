@@ -21,6 +21,7 @@ from ...enums import ResourceType, Seek
 
 from .. import base
 
+from .utils import iso_path_slugify
 
 
 class _ISOFile(io.RawIOBase):
@@ -46,24 +47,27 @@ class _ISOFile(io.RawIOBase):
         return False
 
     def read(self, size=-1):
-        if size == -1 or self._position + size > self._size:
-            size = self._size - self._position
-        return self._handle.read(size)
+        with self._fs.lock():
+            self._handle.seek(self._start + self._position)
+            if size == -1 or self._position + size > self._size:
+                size = self._size - self._position
+            self._position += size
+            return self._handle.read(size)
 
     def seek(self, offset, whence=Seek.set):
 
         if whence == Seek.set:
-            if whence < 0:
-                raise ValueError("Negative seek position {}".format(whence))
+            if offset < 0:
+                raise ValueError("Negative seek position {}".format(offset))
             self._position = min(offset, self._size)
 
         elif whence == Seek.current:
             self._position = max(min(self._position + offset, self._size), 0)
 
         elif whence == Seek.end:
-            if whence > 0:
-                raise ValueError("Positive seek position {}".format(whence))
-            self._position = max(0, self._position + whence)
+            if offset > 0:
+                raise ValueError("Positive seek position {}".format(offset))
+            self._position = max(0, self._size + offset)
 
         else:
             raise ValueError(
@@ -74,8 +78,6 @@ class _ISOFile(io.RawIOBase):
 
         return self._position
 
-
-
     def seekable(self):
         return True
 
@@ -84,10 +86,6 @@ class _ISOFile(io.RawIOBase):
 
     def tellable(self):
         return True
-
-
-
-
 
 
 class ISOReadFS(base.ArchiveReadFS):
@@ -113,7 +111,8 @@ class ISOReadFS(base.ArchiveReadFS):
         elif self._joliet:
             return entry.file_identifier().decode('utf-16be')
         else:
-            return entry.file_identifier().decode('ascii').lower()
+            return entry.file_identifier().decode('ascii')\
+                        .lower().rstrip(';1').rstrip('.')
 
     def _get_cd_entry(self, path):
 
@@ -139,6 +138,7 @@ class ISOReadFS(base.ArchiveReadFS):
                     self._path_table[child_path] = child
 
             # Raise an error if no entry is found with the given name
+            #print(join(subpath, name))
             entry = self._path_table.get(join(subpath, name), None)
             if entry is None:
                 raise errors.ResourceNotFound(path)
@@ -195,11 +195,11 @@ class ISOReadFS(base.ArchiveReadFS):
         if _path in '/':
             return Info({
                 'basic': {'name': '', 'is_dir': True},
-                'details': {'size': 2048, 'type': ResourceType.directory}
+                'details': {'size': 0, 'type': ResourceType.directory}
             })
         else:
             entry = self._get_cd_entry(_path)
-            return self._get_info_from_entry(entry)
+            return self._get_info_from_entry(entry, namespaces)
 
     def scandir(self, path, namespaces=None, page=None):
         _path = self.validatepath(path)
@@ -228,7 +228,9 @@ class ISOReadFS(base.ArchiveReadFS):
         elif not self.isfile(_path):
             raise errors.ResourceNotFound(path)
 
-        entry = self._get_cd_entry(path)
+        print("IN OPENBIN: ", _path)
+
+        entry = self._get_cd_entry(_path)
         return _ISOFile(self, entry)
 
     def getmeta(self, namespace="standard"):
@@ -251,34 +253,57 @@ class ISOSaver(base.ArchiveSaver):
         super(ISOSaver, self).__init__(output, overwrite, initial_position)
 
         self.joliet = options.pop('joliet', False)
-        self.rock_ridge = options.pop('rock_ridge', True)
+        self.rock_ridge = options.pop('rock_ridge', '1.12')
+        self.interchange_level = options.pop('interchange_level', 1)
 
     def _to(self, handle, fs):
         _cd = pycdlib.PyCdlib()
         _cd.new(
-            interchange_level=1, sys_ident='', vol_ident='', set_size=1,
-            seqnum=1, log_block_size=2048, vol_set_ident=' ', pub_ident_str='',
+            interchange_level=1,
+            sys_ident='',
+            vol_ident='',
+            set_size=1,
+            seqnum=1,
+            log_block_size=2048,
+            vol_set_ident=' ',
+            pub_ident_str='',
             preparer_ident_str='',
             app_ident_str='PyCdlib (C) 2015-2016 Chris Lalancette',
-            copyright_file='', abstract_file='', bibli_file='',
-            vol_expire_date=None, app_use='', joliet=False, rock_ridge=None,
+            copyright_file='',
+            abstract_file='',
+            bibli_file='',
+            vol_expire_date=None,
+            app_use='',
+            joliet=False,
+            rock_ridge=self.rock_ridge, # Default: None
             xa=False
         )
+        slug_table = {'/': '/'}
 
         try:
-            for path, info in fs.walk.info(namespaces=('details', 'access', 'stat')):
-
-                if info.is_dir:
-                    _cd.add_directory(path)
-                else:
-                    _cd.add_fp(fs.openbin(path), info.size, path)
-
+            for parent, dirs, files in fs.walk('/',
+                    search='breadth', namespaces=('details', 'access', 'stat')):
+                for d in dirs:
+                    path = join(parent, d.name)
+                    iso_path = iso_path_slugify(path, slug_table, True)
+                    _cd.add_directory(
+                        iso_path=iso_path,
+                        rr_name=d.name if self.rock_ridge else None,
+                        joliet_path=path if self.joliet else None,
+                    )
+                for f in files:
+                    path = join(parent, f.name)
+                    iso_path = iso_path_slugify(path, slug_table)
+                    _cd.add_fp(
+                        fp=fs.openbin(path), length=f.size, iso_path=iso_path,
+                        rr_name=f.name if self.rock_ridge else None,
+                        joliet_path=path if self.joliet else None,
+                    )
         finally:
             if isinstance(handle, io.IOBase):
                 _cd.write_fp(handle)
             else:
                 _cd.write(handle)
-
             _cd.close()
 
 
