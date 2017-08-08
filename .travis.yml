@@ -18,7 +18,6 @@ matrix:
 
 before_install:
 - pip install -U pip setuptools wheel
-- pip install https://github.com/Pyfilesystem/pyfilesystem2/archive/master.zip # until feat-iobase is released
 
 install:
 - pip install '.[all]'
