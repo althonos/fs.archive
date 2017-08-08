@@ -61,8 +61,8 @@ class TestISOFS(fs.test.FSTestCases, unittest.TestCase):
 
 class TestISOReadFS(ArchiveReadTestCases, unittest.TestCase):
 
-    #long_names = True
-    #unicode_names = True
+    long_names = True
+    unicode_names = True
 
     compress = staticmethod(iso_compress)
     make_source_fs = staticmethod(fs.memoryfs.MemoryFS)
@@ -85,10 +85,6 @@ class TestISOFSio(ArchiveIOTestCases, unittest.TestCase):
     compress = staticmethod(iso_compress)
     make_source_fs = staticmethod(fs.memoryfs.MemoryFS)
     _archive_fs = fs.archive.isofs.ISOFS
-
-    @staticmethod
-    def make_source_fs():
-        return fs.memoryfs.MemoryFS()
 
     @staticmethod
     def load_archive(handle):
@@ -130,3 +126,33 @@ class TestISOFSio(ArchiveIOTestCases, unittest.TestCase):
         for entry in self.iter_entries(handle):
             if entry.is_dir():
                 yield iso_path(entry)
+
+
+class TestISOSaver(unittest.TestCase):
+
+    make_source_fs = staticmethod(fs.memoryfs.MemoryFS)
+
+    def test_unicode_duplicates(self):
+        """Check unicode names are not collisioning when slugified.
+        """
+        source = self.make_source_fs()
+        source.makedir('/😋')
+        source.settext('/😋/éé.txt', 'some accents in an emoji')
+        source.settext('/éé.txt', 'some accents')
+        source.settext('/üü.txt', 'some umlauts')
+        source.settext('/☭☭.txt', 'some communism')
+
+        stream = io.BytesIO()
+        saver = fs.archive.isofs.ISOSaver(stream)
+        saver.save(source)
+
+        stream.seek(0)
+        iso = fs.archive.isofs.ISOReadFS(stream)
+        self.assertEqual(
+            sorted(iso.listdir('/')),
+            ['éé.txt', 'üü.txt' ,'☭☭.txt', '😋'],
+        )
+        self.assertEqual(iso.gettext('/éé.txt'), 'some accents')
+        self.assertEqual(iso.gettext('/üü.txt'), 'some umlauts')
+        self.assertEqual(iso.gettext('/☭☭.txt'), 'some communism')
+        self.assertEqual(iso.gettext('/😋/éé.txt'), 'some accents in an emoji')
