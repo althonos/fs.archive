@@ -89,9 +89,9 @@ Extras
     module in Python 2, but is available natively in Python 3.
 
 *iso*
-    pure-python read-only support for ``ISO`` disk images (with support
-    for ISO 9660 Levels 1, 2 and 3, as well as the Joliet extension).
-    Requires the awesome `construct <https://pypi.python.org/pypi/backports.lzma>`_
+    pure-python reading/writing ``ISO`` disk images (with support
+    for ISO 9660 Levels 1, 2 and 3, Joliet and Rock Ridge extensions).
+    Requires the `pycdlib <https://pypi.python.org/pypi/pycdlib>`_
     module.
 
 
