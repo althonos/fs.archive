@@ -239,12 +239,14 @@ class TarSaver(base.ArchiveSaver):
                     mtime = int(mtime)
                 tar_info.mtime = mtime
 
-                for tarattr, infoattr in attr_map.items():
-                    if getattr(info, infoattr) is not None:
-                        setattr(tar_info, tarattr, getattr(info, infoattr))
+                if info.has_namespace('access'):
+                    for tarattr, infoattr in attr_map.items():
+                        if getattr(info, infoattr) is not None:
+                            setattr(tar_info, tarattr, getattr(info, infoattr))
+                    tar_info.mode = getattr(info.permissions, 'mode', 0o420)
+
 
                 tar_info.size = info.size
-                tar_info.mode = getattr(info.permissions, 'mode', 0o420)
                 tar_info.type = type_map.get(info.type, tarfile.REGTYPE)
 
                 if not info.is_dir:
