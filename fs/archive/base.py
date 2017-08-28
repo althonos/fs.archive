@@ -18,8 +18,6 @@ from .._fscompat import fsdecode, fspath
 from ._utils import writable_stream, writable_path
 
 
-
-
 @six.add_metaclass(abc.ABCMeta)
 class ArchiveSaver(object):
     """Base class for archive serializers.
@@ -190,9 +188,6 @@ class ArchiveReadFS(FS):
     def validatepath(self, path):
         _path = super(ArchiveReadFS, self).validatepath(path)
         return _path
-
-
-
 
 
 @six.add_metaclass(abc.ABCMeta)
