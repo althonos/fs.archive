@@ -10,7 +10,7 @@ import pkg_resources
 from .. import errors
 from ..path import basename
 from ..opener import open_fs
-from ..opener._errors import Unsupported
+from ..opener.errors import UnsupportedProtocol
 
 from . import base
 
@@ -50,13 +50,13 @@ def open_archive(fs_url, archive):
     entry_point = next((ep for ep in it if archive.endswith(ep.name)), None)
 
     if entry_point is None:
-        raise Unsupported(
+        raise UnsupportedProtocol(
             'unknown archive extension: {}'.format(archive))
 
     try:
         archive_opener = entry_point.load()
     except pkg_resources.DistributionNotFound as df: # pragma: no cover
-        six.raise_from(Unsupported(
+        six.raise_from(UnsupportedProtocol(
             'extension {} requires {}'.format(entry_point.name, df.req)), None)
 
     try:

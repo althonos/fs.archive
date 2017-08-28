@@ -13,7 +13,7 @@ import pkg_resources
 import fs.archive
 
 from fs.wrap import WrapReadOnly
-from fs.opener import _errors as errors
+from fs.opener import errors
 from fs.archive.zipfs import ZipFS
 from fs.archive.tarfs import TarFS, TarFile
 # from fs.archive.isofs import ISOReadFS
@@ -27,7 +27,7 @@ class TestOpenArchive(unittest.TestCase):
     def test_open_unknown_archive(self):
         """Check opening an unknown archive type raises `Unsupported`.
         """
-        with self.assertRaises(errors.Unsupported):
+        with self.assertRaises(errors.UnsupportedProtocol):
             with fs.archive.open_archive('mem://', 'not-an-archive.txt'):
                 pass
 
