@@ -2,4 +2,6 @@
 
 import setuptools
 
-setuptools.setup()
+setuptools.setup(
+    setup_requires=["green", "docutils", "Pygments"]
+)
