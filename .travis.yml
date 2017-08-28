@@ -21,7 +21,7 @@ before_install:
 - pip install -U http://github.com/clalancette/pycdlib/archive/master.zip
 
 install:
-- pip install '.[all]'
+- pip install '.[all, tests]'
 
 script:
 - python setup.py test
