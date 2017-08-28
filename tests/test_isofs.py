@@ -43,7 +43,7 @@ def iso_path(iso_entry, joliet=False, rock_ridge=False):
     while iso_entry.parent is not None:
         path = join(iso_name(iso_entry.parent, joliet, rock_ridge), path)
         iso_entry = iso_entry.parent
-    return abspath(path)
+    return abspath(path).lower()
 
 
 class TestISOFS(fs.test.FSTestCases, unittest.TestCase):

@@ -58,7 +58,7 @@ def iso_name_increment(name, is_dir=False, max_length=8):
     return ''.join([base, tag, ext])
 
 
-def iso_path_slugify(path, path_table, is_dir=False):
+def iso_path_slugify(path, path_table, is_dir=False, strict=True):
     """Slugify a path, maintaining a map with the previously slugified paths.
 
     The path table is used to prevent slugified names from collisioning,
@@ -84,6 +84,8 @@ def iso_path_slugify(path, path_table, is_dir=False):
     else:
         name, ext = base.rsplit('.', 1) if '.' in base else (base, '')
         slug_base = '.'.join([iso_name_slugify(name)[:8], ext])
+    if strict:
+        slug_base = slug_base.upper()
 
     # Deduplicate slug if needed and update path_table
     slugs = set(path_table.values())

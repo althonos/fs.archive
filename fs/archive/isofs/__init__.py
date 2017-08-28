@@ -237,7 +237,7 @@ class ISOReadFS(base.ArchiveReadFS):
     def getmeta(self, namespace="standard"):
         meta = self._meta.get(namespace, {}).copy()
         if namespace == "standard" and not (self._rock_ridge or self._joliet):
-            meta['case_insensitive'] = True
+            meta['case_insensitive'] = self._cd.interchange_level < 4
             meta['max_path_length'] = 255
         return meta
 
@@ -256,11 +256,12 @@ class ISOSaver(base.ArchiveSaver):
         self.joliet = options.pop('joliet', False)
         self.rock_ridge = options.pop('rock_ridge', '1.12')
         self.interchange_level = options.pop('interchange_level', 1)
+        self.strict = self.interchange_level < 4
 
     def _to(self, handle, fs):
         _cd = pycdlib.PyCdlib()
         _cd.new(
-            interchange_level=1,
+            interchange_level=self.interchange_level,
             sys_ident='',
             vol_ident='',
             set_size=1,
@@ -275,8 +276,8 @@ class ISOSaver(base.ArchiveSaver):
             bibli_file='',
             vol_expire_date=None,
             app_use='',
-            joliet=False,
-            rock_ridge=self.rock_ridge, # Default: None
+            joliet=self.joliet,
+            rock_ridge=self.rock_ridge,
             xa=False
         )
         slug_table = {'/': '/'}
@@ -286,7 +287,8 @@ class ISOSaver(base.ArchiveSaver):
                     search='breadth', namespaces=('details', 'access', 'stat')):
                 for d in dirs:
                     path = join(parent, d.name)
-                    iso_path = iso_path_slugify(path, slug_table, True)
+                    iso_path = \
+                        iso_path_slugify(path, slug_table, True, self.strict)
                     _cd.add_directory(
                         iso_path=iso_path,
                         rr_name=d.name if self.rock_ridge else None,
@@ -294,7 +296,8 @@ class ISOSaver(base.ArchiveSaver):
                     )
                 for f in files:
                     path = join(parent, f.name)
-                    iso_path = iso_path_slugify(path, slug_table)
+                    iso_path = \
+                        iso_path_slugify(path, slug_table, strict=self.strict)
                     _cd.add_fp(
                         fp=fs.openbin(path), length=f.size, iso_path=iso_path,
                         rr_name=f.name if self.rock_ridge else None,
