@@ -74,8 +74,8 @@ Install directly from PyPI, using `pip <https://pip.pypa.io/>`_ ::
 
     pip install fs.archive
 
-Extras
-^^^^^^
+Additional features
+^^^^^^^^^^^^^^^^^^^
 
 ``fs.archive`` also provides the following `extras
 <https://setuptools.readthedocs.io/en/latest/setuptools.html#declaring-extras-optional-features-with-their-own-dependencies>`_:
