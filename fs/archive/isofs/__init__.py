@@ -56,27 +56,22 @@ class _ISOFile(io.RawIOBase):
             return self._handle.read(size)
 
     def seek(self, offset, whence=Seek.set):
-
         if whence == Seek.set:
             if offset < 0:
                 raise ValueError("Negative seek position {}".format(offset))
             self._position = min(offset, self._size)
-
         elif whence == Seek.current:
             self._position = max(min(self._position + offset, self._size), 0)
-
         elif whence == Seek.end:
             if offset > 0:
                 raise ValueError("Positive seek position {}".format(offset))
             self._position = max(0, self._size + offset)
-
         else:
             raise ValueError(
                 "Invalid whence ({}, should be {}, {} or {})".format(
                     whence, Seek.set, Seek.current, Seek.end
                 )
             )
-
         return self._position
 
     def seekable(self):
@@ -84,9 +79,6 @@ class _ISOFile(io.RawIOBase):
 
     def tell(self):
         return self._position
-
-    def tellable(self):
-        return True
 
 
 class ISOReadFS(base.ArchiveReadFS):
