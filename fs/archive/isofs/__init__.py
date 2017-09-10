@@ -24,7 +24,7 @@ from .. import base
 from .utils import iso_path_slugify
 
 
-class _ISOFile(io.RawIOBase):
+class ISOFile(io.RawIOBase):
 
     def __init__(self, fs, entry):
 
@@ -224,7 +224,7 @@ class ISOReadFS(base.ArchiveReadFS):
         print("IN OPENBIN: ", _path)
 
         entry = self._get_cd_entry(_path)
-        return _ISOFile(self, entry)
+        return ISOFile(self, entry)
 
     def getmeta(self, namespace="standard"):
         meta = self._meta.get(namespace, {}).copy()
