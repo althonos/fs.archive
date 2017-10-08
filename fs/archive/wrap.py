@@ -14,7 +14,16 @@ from ..opener import open_fs
 from ..wrapfs import WrapFS
 
 from .meta import ArchiveMeta
-from ._utils import unique
+from ._utils import unique, UniversalContainer
+
+
+
+def _copy_file_rich(src_fs, src_path, dst_fs, dst_path=None):
+    dst_path = src_path if dst_path is None else dst_path
+    copy_file(src_fs, src_path, dst_fs, dst_path)
+    src_info = src_fs.getinfo(src_path, namespaces=UniversalContainer())
+    dst_fs.setinfo(dst_path, src_info.raw)
+
 
 
 
@@ -75,7 +84,7 @@ class WrapWritable(WrapFS):
         if self.exists(_path):
             if not recreate:
                 raise errors.DirectoryExists(path)
-        elif not self.isdir(dirname(_path)):
+        elif not self.exists(dirname(_path)):
             raise errors.ResourceNotFound(dirname(path))
         elif self.isfile(dirname(_path)):
             raise errors.DirectoryExpected(dirname(path))
@@ -107,8 +116,8 @@ class WrapWritable(WrapFS):
         elif not _mode.writing:
             return self._rfs.openbin(path, mode, buffering, **options)
         else:
-            self._wfs.makedirs(dirname(_path))
-            copy_file(self._rfs, _path, self._wfs, _path)
+            self._wfs.makedirs(dirname(_path), recreate=True)
+            _copy_file_rich(self._rfs, _path, self._wfs)
             return self._wfs.openbin(path, mode, buffering, **options)
 
     def remove(self, path):
@@ -133,15 +142,9 @@ class WrapWritable(WrapFS):
             raise errors.ResourceNotFound(path)
         if self._rfs.exists(_path):
             self._wfs.makedirs(dirname(_path), recreate=True)
-            copy_file(self._rfs, _path, self._wfs, _path)
+            _copy_file_rich(self._rfs, _path, self._wfs, _path)
         return self._wfs.setinfo(_path, info)
 
     def validatepath(self, path):
         super(WrapWritable, self).validatepath(path)
         return abspath(normpath(path))
-
-
-
-
-        # if not self._writable_fs.isempty('/'):
-        #     raise errors.CreateFailed("Cannot use {} as a writable filesystem".format(self._writable_fs))

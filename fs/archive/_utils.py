@@ -7,15 +7,23 @@ import io
 import sys
 import errno
 import importlib
+import collections
 
 from six.moves import filterfalse
 
 __all__ = [
+    'UniversalContainer',
     'unique',
     'import_from_names',
     'writable_path',
     'writable_stream'
 ]
+
+
+
+class UniversalContainer(collections.Container):
+    def __contains__(self, object):
+        return True
 
 
 def unique(iterable, key=None):
