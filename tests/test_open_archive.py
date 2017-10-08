@@ -11,12 +11,12 @@ import unittest
 import pkg_resources
 
 import fs.archive
+import fs.errors
 
 from fs.wrap import WrapReadOnly
 from fs.opener import errors
 from fs.archive.zipfs import ZipFS
 from fs.archive.tarfs import TarFS, TarFile
-# from fs.archive.isofs import ISOReadFS
 from fs.archive._utils import import_from_names
 
 lzma = import_from_names('lzma', 'backports.lzma')
@@ -103,10 +103,10 @@ class TestOpenArchive(unittest.TestCase):
     def test_tar_no_xz(self):
         """Check opening ``*.tar.xz`` raises `Unsupported` on missing extras.
         """
-        with self.assertRaises(errors.Unsupported):
+        with self.assertRaises(fs.errors.Unsupported):
             with fs.archive.open_archive('mem://', 'archive.tar.xz'):
                 pass
-        with self.assertRaises(errors.Unsupported):
+        with self.assertRaises(fs.errors.Unsupported):
             with fs.archive.open_archive('mem://', 'archive.txz'):
                 pass
 
