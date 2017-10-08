@@ -43,3 +43,18 @@ class TestUtils(unittest.TestCase):
         self.assertIs(imp('os'), os)
         self.assertIs(imp('akjhkjhsk', 'os'), os)
         self.assertIs(imp('akeskjhk'), None)
+
+    def test_unique(self):
+        self.assertEqual(
+            list(_utils.unique(iter('aaabbbccdef'))),
+            list('abcdef')
+        )
+        self.assertEqual(
+            list(_utils.unique(['a', 'aa', 'bb', 'ccc', 'ddd'], key=len)),
+            ['a', 'aa', 'ccc',]
+        )
+
+    def test_universal_container(self):
+        c = _utils.UniversalContainer()
+        self.assertIn(1, c)
+        self.assertIn(None, c)
