@@ -21,13 +21,13 @@ before_install:
 - pip install -U http://github.com/clalancette/pycdlib/archive/master.zip
 
 install:
-- pip install '.[all, tests]'
+- pip install .[dev,test]
 
 script:
-- python setup.py test
+- green
 
 after_script:
-- bash <(curl -s https://codecov.io/bash)
+- codecov
 
 before_deploy:
 - python setup.py check -rms
