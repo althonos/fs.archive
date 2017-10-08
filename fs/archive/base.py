@@ -11,11 +11,17 @@ import shutil
 import tempfile
 
 from .. import errors
+from ..mode import Mode
+from ..copy import copy_file
+from ..path import abspath, normpath, join, dirname
 from ..base import FS
-from ..proxy.writer import ProxyWriter
+from ..opener import open_fs
+from ..wrapfs import WrapFS
+from ..multifs import MultiFS
 from .._fscompat import fsdecode, fspath
 
-from ._utils import writable_stream, writable_path
+from .wrap import WrapWritable
+from ._utils import writable_stream, writable_path, unique
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -174,10 +180,7 @@ class ArchiveReadFS(FS):
     def getmeta(self, namespace="standard"):
         if namespace == "standard":
             return self._meta['standard'].copy()
-        # elif namespace == "archive":
-        #     return self._meta['archive'].copy()
-        else:
-            return {}
+        return {}
 
     def close(self):
         if not self.isclosed():
@@ -185,29 +188,30 @@ class ArchiveReadFS(FS):
                 getattr(self._handle, 'close', lambda: None)()
             super(ArchiveReadFS, self).close()
 
-    def validatepath(self, path):
-        _path = super(ArchiveReadFS, self).validatepath(path)
-        return _path
+    # def validatepath(self, path):
+    #     _path = super(ArchiveReadFS, self).validatepath(path)
+    #     return _path
 
 
 @six.add_metaclass(abc.ABCMeta)
-class ArchiveFS(ProxyWriter):
-    """A proxy filesystem allowing to read, write and update an archive.
+class ArchiveFS(WrapFS):
+    """A wrapper filesystem allowing to read, write and update an archive.
     """
-    _read_fs_cls = ArchiveReadFS
-    _saver_cls = ArchiveSaver
+    _read_fs_cls = NotImplemented
+    _saver_cls = NotImplemented
 
     def __init__(self, handle, proxy=None, **options):
         """Create a new archive filesystem.
 
         Parameters:
-            handle (`io.IOBase` or `str`): a filename or a stream storing an
+            handle (io.IOBase or str): a filename or a stream storing an
                 archive and/or in which to write the updated archive.
-            proxy (`fs.base.FS`): the filesystem to use as a proxy. Leave
-                to ``None`` to use the default defined in `fs.proxy.writer`.
+            proxy (FS): the filesystem to use as to perform temporary
+                write operations. Leave to `None` to use the default
+                defined in `fs.proxy.writer`.
 
         Keyword Arguments:
-            close_handle (`boolean`): if ``True``, close the handle
+            close_handle (boolean): if `True`, close the handle
                 when the filesystem is closed. **[default: True]**
         """
 
@@ -246,10 +250,18 @@ class ArchiveFS(ProxyWriter):
         if create_saver:
             self._saver = self._saver_cls(handle, overwrite, initial_position)
 
-        super(ArchiveFS, self).__init__(read_fs, proxy)
+        proxy = proxy or "mem://"
+        wrapped_fs = WrapWritable(read_fs, writable_fs=proxy) \
+                  if read_fs is not None else open_fs(proxy)
+        super(ArchiveFS, self).__init__(wrapped_fs)
 
     def close(self):
         if not self.isclosed():
             if self._saver is not None:
                 self._saver.save(self)
             super(ArchiveFS, self).close()
+
+    def validatepath(self, path):
+        _path = abspath(normpath(path))
+        super(ArchiveFS, self).validatepath(_path)
+        return _path

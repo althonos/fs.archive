@@ -344,7 +344,14 @@ class ArchiveIOTestCases(object):
 
     def _test_read_write(self, fs):
         self._test_read(fs)
+        # fs.appendtext('foo.txt', ' I am an archive.')
+        # self.assertEqual(
+        #     fs.gettext('foo.txt'),
+        #     'Hello World ! I am an archive.'
+        # )
         self._test_write(fs)
+        # fs.settext('egg', 'this is an egg')
+        # self.assertEqual(fs.gettext('egg'), 'this is an egg')
 
     def _test_write(self, fs):
         fs.touch('ham.txt')
@@ -359,6 +366,7 @@ class ArchiveIOTestCases(object):
         self.assertTrue(fs.isdir('spam/qux'))
         self.assertTrue(fs.isfile('spam/boom.txt'))
         self.assertFalse(fs.isdir('egg') or fs.exists('egg'))
+        self.assertNotIn('egg', fs.listdir('/'))
 
     def test_read_stream(self):
         """Check archives can be read from a stream.
@@ -469,7 +477,7 @@ class ArchiveIOTestCases(object):
         )
 
     def test_iter_files(self):
-        """Check the `iter_files` method works as intented.
+        """Check the `iter_files` method works as intended.
         """
         handle = self.make_archive(io.BytesIO())
 

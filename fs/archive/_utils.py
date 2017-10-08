@@ -8,6 +8,32 @@ import sys
 import errno
 import importlib
 
+from six.moves import filterfalse
+
+__all__ = [
+    'unique',
+    'import_from_names',
+    'writable_path',
+    'writable_stream'
+]
+
+
+def unique(iterable, key=None):
+        """Yield unique elements, preserving order.
+        """
+        seen = set()
+        seen_add = seen.add
+        if key is None:
+            for element in filterfalse(seen.__contains__, iterable):
+                seen_add(element)
+                yield element
+        else:
+            for element in iterable:
+                k = key(element)
+                if k not in seen:
+                    seen_add(k)
+                    yield element
+
 
 def import_from_names(*names):
     for name in names:

@@ -23,9 +23,9 @@ def open_archive(fs_url, archive):
     will close all resources it had to open.
 
     Arguments:
-        fs_url (`six.text_type` or `fs.base.FS`): a FS URL, or a filesystem
+        fs_url (FS or text_type): a FS URL, or a filesystem
             instance, where the archive file is located.
-        archive (`six.text_type`): the path to the archive file on the
+        archive (text_type): the path to the archive file on the
             given filesystem.
 
     Raises:
