@@ -22,6 +22,17 @@ __all__ = [
 
 
 class UniversalContainer(collections.Container):
+    """A container that contains everything.
+
+    Example:
+        >>> c = UniversalContainer()
+        >>> 1 in c
+        True
+        >>> None in c
+        True
+        >>> c in c
+        True
+    """
     def __contains__(self, object):
         return True
 
@@ -44,6 +55,15 @@ def unique(iterable, key=None):
 
 
 def import_from_names(*names):
+    """Try to import the same function from various names.
+
+    Example:
+        >>> etree = import_from_names(
+        ...     'lxml.etree',
+        ...     'xml.etree.cElementTree',
+        ...     'xml.etree.ElementTree'
+        ... )
+    """
     for name in names:
         try:
             return importlib.import_module(name)
@@ -53,6 +73,8 @@ def import_from_names(*names):
 
 
 def writable_path(path):
+    """Test weither a path can be written to.
+    """
     if os.path.exists(path):
         return os.access(path, os.W_OK)
     try:
@@ -66,6 +88,8 @@ def writable_path(path):
 
 
 def writable_stream(handle):
+    """Test weither a stream can be written to.
+    """
     if isinstance(handle, io.IOBase) and sys.version_info >= (3, 5):
         return handle.writable()
     try:

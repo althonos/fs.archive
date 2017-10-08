@@ -49,7 +49,7 @@ class WrapWritable(WrapFS):
         _path = self.validatepath(path)
         if self._wfs.exists(path):
             return True
-        elif self._rfs.exists(path) and not _path in self._removed:
+        if self._rfs.exists(path) and _path not in self._removed:
             return True
         return False
 
@@ -60,6 +60,14 @@ class WrapWritable(WrapFS):
         if self._wfs.exists(_path):
             return self._wfs.getinfo(_path, namespaces)
         return self._rfs.getinfo(_path, namespaces)
+
+    def isfile(self, path):
+        _path = self.validatepath(path)
+        if self._wfs.isfile(_path):
+            return True
+        if self._rfs.isfile(_path) and _path not in self._removed:
+            return True
+        return False
 
     def listdir(self, path):
         _path = self.validatepath(path)

@@ -188,10 +188,6 @@ class ArchiveReadFS(FS):
                 getattr(self._handle, 'close', lambda: None)()
             super(ArchiveReadFS, self).close()
 
-    # def validatepath(self, path):
-    #     _path = super(ArchiveReadFS, self).validatepath(path)
-    #     return _path
-
 
 @six.add_metaclass(abc.ABCMeta)
 class ArchiveFS(WrapFS):
@@ -260,8 +256,3 @@ class ArchiveFS(WrapFS):
             if self._saver is not None:
                 self._saver.save(self)
             super(ArchiveFS, self).close()
-
-    def validatepath(self, path):
-        _path = abspath(normpath(path))
-        super(ArchiveFS, self).validatepath(_path)
-        return _path

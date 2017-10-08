@@ -270,6 +270,14 @@ class ArchiveReadTestCases(object):
         with self.fs.openbin(filename) as f:
             self.assertEqual(f.read(), b'This is a long file name !')
 
+    def test_create_failed(self):
+        self.assertRaises(errors.CreateFailed, self._archive_read_fs, None)
+
+    def test_validatepath(self):
+        self.assertRaises(errors.IllegalBackReference, self.fs.validatepath, '/..')
+        self.assertRaises(errors.InvalidCharsInPath, self.fs.validatepath, '\0')
+        self.assertEqual(self.fs.validatepath('foo/bar/../baz'), '/foo/baz')
+
 
 @six.add_metaclass(abc.ABCMeta)
 class ArchiveIOTestCases(object):
@@ -344,14 +352,7 @@ class ArchiveIOTestCases(object):
 
     def _test_read_write(self, fs):
         self._test_read(fs)
-        # fs.appendtext('foo.txt', ' I am an archive.')
-        # self.assertEqual(
-        #     fs.gettext('foo.txt'),
-        #     'Hello World ! I am an archive.'
-        # )
         self._test_write(fs)
-        # fs.settext('egg', 'this is an egg')
-        # self.assertEqual(fs.gettext('egg'), 'this is an egg')
 
     def _test_write(self, fs):
         fs.touch('ham.txt')

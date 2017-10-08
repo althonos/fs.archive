@@ -46,7 +46,7 @@ class TestZipReadFS(ArchiveReadTestCases, unittest.TestCase):
     unicode_names = True
 
     compress = staticmethod(zip_compress)
-    make_source_fs = staticmethod(fs.memoryfs.MemoryFS)
+    make_source_fs = fs.memoryfs.MemoryFS
     _archive_read_fs = fs.archive.zipfs.ZipReadFS
 
     @staticmethod
@@ -57,23 +57,13 @@ class TestZipReadFS(ArchiveReadTestCases, unittest.TestCase):
         handle = io.BytesIO()
         super(TestZipReadFS, self).setUp(handle)
 
-    def test_create_failed(self):
-        self.assertRaises(fs.errors.CreateFailed, fs.archive.zipfs.ZipFS, 1)
-
 
 class TestZipFSio(ArchiveIOTestCases, unittest.TestCase):
 
     compress = staticmethod(zip_compress)
-    make_source_fs = staticmethod(fs.memoryfs.MemoryFS)
+    make_source_fs = fs.memoryfs.MemoryFS
+    load_archive = fs.archive.zipfs.ZipFS
     _archive_fs = fs.archive.zipfs.ZipFS
-
-    @staticmethod
-    def make_source_fs():
-        return fs.memoryfs.MemoryFS()
-
-    @staticmethod
-    def load_archive(handle):
-        return fs.archive.zipfs.ZipFS(handle)
 
     @staticmethod
     def iter_files(handle):
