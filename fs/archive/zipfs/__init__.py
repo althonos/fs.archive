@@ -40,9 +40,6 @@ class ZipReadFS(base.ArchiveReadFS):
             'max_sys_path_length': None,
             'invalid_path_chars': '\x00\x01',
         },
-        # 'archive': {
-        #     'name_format': '.*',
-        # }
     }
 
     def __init__(self, handle, **options):

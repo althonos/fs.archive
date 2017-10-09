@@ -13,16 +13,17 @@ from fs.memoryfs import MemoryFS
 from fs.archive.wrap import WrapWritable
 
 
+def timestamp(d):
+    d = d.replace(tzinfo=None)
+    return (d - datetime.datetime.utcfromtimestamp(0)).total_seconds()
+
 
 class TestWrapWritable(FSTestCases, unittest.TestCase):
 
-
     def assertDatetimeEqual(self, d1, d2):
-        self.assertEqual(
-            d1.timestamp(),
-            d2.timestamp()
-        )
-
+        t1 = timestamp(d1)
+        t2 = timestamp(d2)
+        self.assertEqual(t1, t2)
 
     def make_fs(self):
         src_fs = MemoryFS()
@@ -36,14 +37,11 @@ class TestWrapWritable(FSTestCases, unittest.TestCase):
         wrapped_fs.removedir('foo')
         return wrapped_fs
 
-
     def test_makedir(self):
         super(TestWrapWritable, self).test_makedir()
         self.assertRaises(errors.ResourceNotFound, self.fs.makedir, 'abc/def')
         self.fs.touch('abc')
         self.assertRaises(errors.DirectoryExpected, self.fs.makedir, 'abc/def')
-
-
 
     def test_setinfo_wrapped(self):
 
@@ -51,7 +49,7 @@ class TestWrapWritable(FSTestCases, unittest.TestCase):
         src_fs = MemoryFS()
         src_fs.settext('test.txt', 'test file')
         src_fs.setinfo('test.txt', {'details':
-            {'modified': now.timestamp(), 'accessed': now.timestamp()}
+            {'modified': timestamp(now), 'accessed': timestamp(now)}
         })
         self.assertDatetimeEqual(src_fs.getdetails('test.txt').modified, now)
 
@@ -67,7 +65,7 @@ class TestWrapWritable(FSTestCases, unittest.TestCase):
 
         now2 = datetime.datetime.now()
         wrapped_fs.setinfo('test.txt', {'details':
-            {'modified': now2.timestamp()}
+            {'modified': timestamp(now2)}
         })
 
         print(src_fs.getdetails('test.txt').raw)
@@ -81,8 +79,6 @@ class TestWrapWritable(FSTestCases, unittest.TestCase):
             wrapped_fs.getdetails('test.txt').modified,
             now2
         )
-
-
 
     def test_openbin_wrapped(self):
         src_fs = MemoryFS()

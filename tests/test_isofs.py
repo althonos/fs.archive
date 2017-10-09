@@ -21,11 +21,17 @@ from fs.path import relpath, join, forcedir, abspath, recursepath
 from fs.archive.test import ArchiveReadTestCases, ArchiveIOTestCases
 
 
-def iso_compress(handle, source_fs):
-    if hasattr(handle, 'seek') and handle.seekable():
-        handle.seek(0)
-    saver = fs.archive.isofs.ISOSaver(handle, False)
-    saver.save(source_fs)
+def compress(rr, joliet, il):
+    def iso_compress(handle, source_fs):
+        if hasattr(handle, 'seek') and handle.seekable():
+            handle.seek(0)
+        saver = fs.archive.isofs.ISOSaver(
+            handle, overwrite=False,
+            rock_ridge=rr, joliet=joliet,
+            interchange_level=il
+        )
+        saver.save(source_fs)
+    return iso_compress
 
 
 def iso_name(entry, joliet=False, rock_ridge=False):
@@ -46,6 +52,8 @@ def iso_path(iso_entry, joliet=False, rock_ridge=False):
     return abspath(path).lower()
 
 
+### rw FS ###
+
 class TestISOFS(fs.test.FSTestCases, unittest.TestCase):
 
     def make_fs(self):
@@ -59,12 +67,12 @@ class TestISOFS(fs.test.FSTestCases, unittest.TestCase):
         del self.tempfile
 
 
-class TestISOReadFS(ArchiveReadTestCases, unittest.TestCase):
+### ro FS ###
 
-    long_names = True
-    unicode_names = True
+class _TestISOReadFS(ArchiveReadTestCases):
 
-    compress = staticmethod(iso_compress)
+    long_names = False
+    unicode_names = False
     make_source_fs = staticmethod(fs.memoryfs.MemoryFS)
     _archive_read_fs = fs.archive.isofs.ISOReadFS
 
@@ -74,15 +82,56 @@ class TestISOReadFS(ArchiveReadTestCases, unittest.TestCase):
 
     def setUp(self):
         handle = io.BytesIO()
-        super(TestISOReadFS, self).setUp(handle)
+        super(_TestISOReadFS, self).setUp(handle)
 
     def test_create_failed(self):
         self.assertRaises(fs.errors.CreateFailed, fs.archive.isofs.ISOFS, 1)
 
 
+class TestISOv1ReadFS(_TestISOReadFS, unittest.TestCase):
+
+    compress = staticmethod(compress(None, False, 1))
+
+
+class TestISOv2ReadFS(_TestISOReadFS, unittest.TestCase):
+
+    compress = staticmethod(compress(None, False, 2))
+
+
+class TestISOv3ReadFS(_TestISOReadFS, unittest.TestCase):
+
+    compress = staticmethod(compress(None, False, 3))
+
+
+class TestISOv4ReadFS(_TestISOReadFS, unittest.TestCase):
+
+    compress = staticmethod(compress(None, False, 4))
+
+
+class TestISORockRidge112ReadFS(_TestISOReadFS, unittest.TestCase):
+
+    long_names = True
+    compress = staticmethod(compress('1.12', False, 1))
+
+
+class TestISORockRidge109ReadFS(_TestISOReadFS, unittest.TestCase):
+
+    long_names = True
+    compress = staticmethod(compress('1.09', False, 1))
+
+
+class TestISOJolietReadFS(_TestISOReadFS, unittest.TestCase):
+
+    long_name = True
+    compress = staticmethod(compress(None, True, 1))
+
+
+
+### FS IO ###
+
 class TestISOFSio(ArchiveIOTestCases, unittest.TestCase):
 
-    compress = staticmethod(iso_compress)
+    compress = staticmethod(compress('1.12', False, 1))
     make_source_fs = staticmethod(fs.memoryfs.MemoryFS)
     _archive_fs = fs.archive.isofs.ISOFS
 
@@ -127,6 +176,9 @@ class TestISOFSio(ArchiveIOTestCases, unittest.TestCase):
             if entry.is_dir():
                 yield iso_path(entry)
 
+
+
+### FS Saver ###
 
 class TestISOSaver(unittest.TestCase):
 
