@@ -17,13 +17,13 @@ from ...mode import Mode
 from ...time import datetime_to_epoch
 from ...path import dirname, basename, relpath, abspath, splitext
 from ...enums import ResourceType
-from ...iotools import RawWrapper
 from ..._fscompat import fsdecode, fsencode
 from ...permissions import Permissions
 
 from .. import base
 
-from .file import TarFile
+from .iotools import RawWrapper
+from .tarfile2 import TarFile
 
 
 class TarReadFS(base.ArchiveReadFS):
@@ -41,11 +41,6 @@ class TarReadFS(base.ArchiveReadFS):
             'max_sys_path_length': None,
             'invalid_path_chars': '\x00\x01',
         },
-        # 'archive': {
-        #     'max_dirname_length': None,
-        #     'max_filename_length': None
-        #     'name_format': '.*',
-        # }
     }
 
     _TYPE_MAP = {

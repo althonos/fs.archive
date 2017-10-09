@@ -21,8 +21,8 @@ def timestamp(d):
 class TestWrapWritable(FSTestCases, unittest.TestCase):
 
     def assertDatetimeEqual(self, d1, d2):
-        t1 = timestamp(d1)
-        t2 = timestamp(d2)
+        t1 = int(timestamp(d1))
+        t2 = int(timestamp(d2))
         self.assertEqual(t1, t2)
 
     def make_fs(self):
@@ -45,27 +45,27 @@ class TestWrapWritable(FSTestCases, unittest.TestCase):
 
     def test_setinfo_wrapped(self):
 
-        now = datetime.datetime.now()
+        epoch = datetime.datetime.fromtimestamp(0)
         src_fs = MemoryFS()
         src_fs.settext('test.txt', 'test file')
         src_fs.setinfo('test.txt', {'details':
-            {'modified': timestamp(now), 'accessed': timestamp(now)}
+            {'modified': timestamp(epoch), 'accessed': timestamp(epoch)}
         })
-        self.assertDatetimeEqual(src_fs.getdetails('test.txt').modified, now)
+        self.assertDatetimeEqual(src_fs.getdetails('test.txt').modified, epoch)
 
         wrapped_fs = WrapWritable(WrapReadOnly(src_fs))
         self.assertDatetimeEqual(
             wrapped_fs.getdetails('test.txt').modified,
-            now
+            epoch
         )
         self.assertDatetimeEqual(
             wrapped_fs.getdetails('test.txt').accessed,
-            now
+            epoch
         )
 
-        now2 = datetime.datetime.now()
+        now = datetime.datetime.now()
         wrapped_fs.setinfo('test.txt', {'details':
-            {'modified': timestamp(now2)}
+            {'modified': timestamp(now)}
         })
 
         print(src_fs.getdetails('test.txt').raw)
@@ -77,7 +77,7 @@ class TestWrapWritable(FSTestCases, unittest.TestCase):
         )
         self.assertDatetimeEqual(
             wrapped_fs.getdetails('test.txt').modified,
-            now2
+            now
         )
 
     def test_openbin_wrapped(self):

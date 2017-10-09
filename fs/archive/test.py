@@ -21,6 +21,7 @@ from .. import open_fs
 from .. import walk
 from .. import errors
 from ..test import UNICODE_TEXT
+from ..enums import Seek
 
 from . import base
 
@@ -186,12 +187,25 @@ class ArchiveReadTestCases(object):
                 ''.join(chars),
                 'Hello, World'
             )
-        with self.assertRaises(errors.ResourceNotFound):
-            with self.fs.open('nothere.txt') as f:
-                pass
-        with self.assertRaises(errors.FileExpected):
-            with self.fs.open('foo') as f:
-                pass
+        self.assertRaises(errors.ResourceNotFound, self.fs.open, 'nothere.txt')
+        self.assertRaises(errors.FileExpected, self.fs.open, 'foo')
+
+    def test_files_seek(self):
+        with self.fs.openbin('top.txt') as f:
+            if f.seekable():
+                self.assertEqual(f.seek(0), 0)
+                self.assertEqual(f.seek(2), 2)
+                self.assertEqual(f.seek(2, Seek.current), 4)
+                self.assertEqual(f.seek(-3, Seek.current), 1)
+
+                self.assertRaises(ValueError, f.seek, -3, Seek.set)
+                self.assertRaises(ValueError, f.seek, 3, Seek.end)
+
+
+            else:
+                self.assertRaises(io.UnsupportedOperation, f.seek, 0)
+                self.assertFalse(f.seekable())
+
 
     def test_gettext(self):
         """Check that `fs.base.FS.gettext` has the expected behaviour.
