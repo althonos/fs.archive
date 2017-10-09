@@ -19,6 +19,7 @@ import fs.archive.isofs
 
 from fs.path import relpath, join, forcedir, abspath, recursepath
 from fs.archive.test import ArchiveReadTestCases, ArchiveIOTestCases
+from fs.archive.isofs import _utils
 
 
 def compress(rr, joliet, il):
@@ -208,3 +209,34 @@ class TestISOSaver(unittest.TestCase):
         self.assertEqual(iso.gettext('/üü.txt'), 'some umlauts')
         self.assertEqual(iso.gettext('/☭☭.txt'), 'some communism')
         self.assertEqual(iso.gettext('/😋/éé.txt'), 'some accents in an emoji')
+
+
+
+### utils ###
+
+class TestISOUtils(unittest.TestCase):
+
+    def test_name_slugify(self):
+        slugify = _utils.iso_name_slugify
+        self.assertEqual(slugify("épatant"), "_patant")
+
+    def test_name_increment(self):
+        increment = _utils.iso_name_increment
+        self.assertEqual(increment('foo.txt'), 'foo1.txt')
+        self.assertEqual(increment('foo1.txt'), 'foo2.txt')
+        self.assertEqual(increment('foo9.txt'), 'foo10.txt')
+        self.assertEqual(increment('foo9.txt', max_length=4), 'fo10.txt')
+        self.assertEqual(increment('bar'), 'bar1')
+        self.assertEqual(increment('bar1'), 'bar2')
+        self.assertEqual(increment('bar9'), 'bar10')
+        self.assertEqual(increment('bar9', max_length=4), 'ba10')
+
+    def test_path_slugify(self):
+        slugify = _utils.iso_path_slugify
+        pt = {'/': '/'}
+        self.assertEqual(slugify('/abc.txt', pt), '/ABC.TXT')
+        self.assertEqual(slugify('/àbc.txt', pt), '/_BC.TXT')
+        self.assertEqual(slugify('/àbç.txt', pt), '/_B_.TXT')
+        self.assertEqual(slugify('/àbé.txt', pt), '/_B_1.TXT')
+        self.assertEqual(slugify('/àbé.txt', pt, True), '/_B_.TXT1')
+        self.assertEqual(slugify('/àbè.txt', pt, True), '/_B_.TXT2')

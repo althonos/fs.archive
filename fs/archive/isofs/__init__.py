@@ -21,7 +21,7 @@ from ...enums import ResourceType, Seek
 
 from .. import base
 
-from .utils import iso_path_slugify
+from ._utils import iso_path_slugify
 
 
 class ISOFile(io.RawIOBase):

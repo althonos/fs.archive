@@ -73,7 +73,7 @@ def import_from_names(*names):
 
 
 def writable_path(path):
-    """Test weither a path can be written to.
+    """Test whether a path can be written to.
     """
     if os.path.exists(path):
         return os.access(path, os.W_OK)
@@ -88,7 +88,7 @@ def writable_path(path):
 
 
 def writable_stream(handle):
-    """Test weither a stream can be written to.
+    """Test whether a stream can be written to.
     """
     if isinstance(handle, io.IOBase) and sys.version_info >= (3, 5):
         return handle.writable()

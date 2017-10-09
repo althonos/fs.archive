@@ -194,18 +194,21 @@ class ArchiveReadTestCases(object):
         with self.fs.openbin('top.txt') as f:
             if f.seekable():
                 self.assertEqual(f.seek(0), 0)
+                self.assertEqual(f.tell(), 0)
                 self.assertEqual(f.seek(2), 2)
+                self.assertEqual(f.tell(), 2)
                 self.assertEqual(f.seek(2, Seek.current), 4)
+                self.assertEqual(f.tell(), 4)
                 self.assertEqual(f.seek(-3, Seek.current), 1)
-
+                self.assertEqual(f.tell(), 1)
+                self.assertEqual(f.seek(-1, Seek.end), 11)
+                self.assertEqual(f.tell(), 11)
                 self.assertRaises(ValueError, f.seek, -3, Seek.set)
                 self.assertRaises(ValueError, f.seek, 3, Seek.end)
-
-
+                self.assertRaises(ValueError, f.seek, 0, 12)
             else:
                 self.assertRaises(io.UnsupportedOperation, f.seek, 0)
                 self.assertFalse(f.seekable())
-
 
     def test_gettext(self):
         """Check that `fs.base.FS.gettext` has the expected behaviour.
@@ -256,6 +259,11 @@ class ArchiveReadTestCases(object):
         self.assertIn('thread_safe', meta)
         self.assertIn('unicode_paths', meta)
         self.assertIn('virtual', meta)
+
+    def test_archive_meta_other(self):
+        """Check that `getmeta` returns an empty dict on unknown namespace.
+        """
+        self.assertEqual(self.fs.getmeta("nonamespace"), {})
 
     def test_unicode_names(self):
         if not self.unicode_names:

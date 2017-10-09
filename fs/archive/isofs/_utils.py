@@ -30,7 +30,7 @@ def iso_name_increment(name, is_dir=False, max_length=8):
         'foo1.txt'
         >>> iso_name_increment('bar10')
         'bar11'
-        >>> iso_name_increment('bar99', 5)
+        >>> iso_name_increment('bar99', max_length=5)
         'ba100'
     """
 
@@ -66,10 +66,10 @@ def iso_path_slugify(path, path_table, is_dir=False, strict=True):
 
     Example:
         >>> path_table = {'/': '/'}
-        >>> iso_path_slugify('/abc.txt', path_table)
-        '/abc.txt'
+        >>> iso_path_slugify('/ébc.txt', path_table)
+        '/_BC.TXT'
         >>> iso_path_slugify('/àbc.txt', path_table)
-        '/abc1.txt'
+        '/_BC2.TXT'
     """
 
     # Split the path to extract the parent and basename
