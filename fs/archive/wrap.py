@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import operator
 import itertools
 import six
 
@@ -40,6 +41,38 @@ class WrapWritable(WrapFS):
         self._wfs = open_fs(writable_fs)
         self._removed = set()
 
+    def appendbytes(self, path, data):
+        _path = self.validatepath(path)
+        if not isinstance(data, bytes):
+            raise TypeError("must be bytes")
+        if not self.isdir(dirname(_path)):
+            raise errors.ResourceNotFound(dirname(path))
+        self._wfs.makedirs(dirname(_path), recreate=True)
+        if self.exists(_path) and not self.isfile(_path):
+            raise errors.FileExpected(path)
+        if self._rfs.isfile(_path) and _path not in self._removed:
+            if not self._wfs.isfile(_path):
+                _copy_file_rich(self._rfs, _path, self._wfs)
+        if _path in self._removed:
+            self._removed.remove(_path)
+        return self._wfs.appendbytes(_path, data)
+
+    def appendtext(self, path, text):
+        _path = self.validatepath(path)
+        if not isinstance(text, six.text_type):
+            raise TypeError("must be unicode string")
+        if not self.isdir(dirname(_path)):
+            raise errors.ResourceNotFound(dirname(path))
+        self._wfs.makedirs(dirname(_path), recreate=True)
+        if self.exists(_path) and not self.isfile(_path):
+            raise errors.FileExpected(path)
+        if self._rfs.isfile(_path) and _path not in self._removed:
+            if not self._wfs.isfile(_path):
+                _copy_file_rich(self._rfs, _path, self._wfs)
+        if _path in self._removed:
+            self._removed.remove(_path)
+        return self._wfs.appendtext(_path, text)
+
     def close(self):
         if not self.isclosed():
             self._wfs.close()
@@ -60,14 +93,6 @@ class WrapWritable(WrapFS):
         if self._wfs.exists(_path):
             return self._wfs.getinfo(_path, namespaces)
         return self._rfs.getinfo(_path, namespaces)
-
-    def isfile(self, path):
-        _path = self.validatepath(path)
-        if self._wfs.isfile(_path):
-            return True
-        if self._rfs.isfile(_path) and _path not in self._removed:
-            return True
-        return False
 
     def listdir(self, path):
         _path = self.validatepath(path)
@@ -143,6 +168,29 @@ class WrapWritable(WrapFS):
         self._removed.add(_path)
         if self._wfs.isdir(_path):
             self._wfs.removedir(_path)
+
+    def scandir(self, path, namespaces=None, page=None):
+        _path = self.validatepath(path)
+
+        if not self.exists(_path):
+            raise errors.ResourceNotFound(path)
+        if not self.isdir(_path):
+            raise errors.DirectoryExpected(path)
+
+        it = itertools.chain()
+        if self._wfs.isdir(_path):
+            it = itertools.chain(it, self._wfs.scandir(_path, namespaces))
+        if self._rfs.isdir(_path) and _path not in self._removed:
+            it = itertools.chain(it, self._rfs.scandir(_path, namespaces))
+
+        def exists(info):
+            return self.exists(join(_path, info.name))
+        it = six.moves.filter(exists, it)
+        it = unique(it, key=operator.attrgetter('name'))
+        if page is not None:
+            it = itertools.islice(it, page[0], page[1])
+
+        return it
 
     def setinfo(self, path, info):
         _path = self.validatepath(path)
