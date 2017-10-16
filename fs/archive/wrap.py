@@ -4,9 +4,11 @@ from __future__ import unicode_literals
 
 import operator
 import itertools
+import abc
 import six
 
 from .. import errors
+from ..base import FS
 from ..errors import ResourceNotFound
 from ..copy import copy_file
 from ..path import abspath, dirname, join, normpath
@@ -14,25 +16,22 @@ from ..mode import Mode
 from ..opener import open_fs
 from ..wrapfs import WrapFS
 
-from .meta import ArchiveMeta
-from ._utils import unique, UniversalContainer
+from ._utils import unique, UniversalContainer, NoWrapMeta
 
 
-
-def _copy_file_rich(src_fs, src_path, dst_fs, dst_path=None):
-    dst_path = src_path if dst_path is None else dst_path
-    copy_file(src_fs, src_path, dst_fs, dst_path)
-    src_info = src_fs.getinfo(src_path, namespaces=UniversalContainer())
-    dst_fs.setinfo(dst_path, src_info.raw)
+__all__ = ["WrapWritable"]
 
 
 
 
-@six.add_metaclass(ArchiveMeta)
+@six.add_metaclass(NoWrapMeta)
 class WrapWritable(WrapFS):
     """A wrapper that makes a read-only FS writable.
 
-    All modifications are discarded once the filesystem is closed.
+    All modifications are discarded once the filesystem is closed. Using
+    the `NoWrapMeta` metaclass, the wrapper will use the base `FS`
+    implementation of the non-essential methods instead of using the
+    `WrapFS` implementation.
     """
 
     def __init__(self, delegate_fs, writable_fs="mem://"):
@@ -43,7 +42,7 @@ class WrapWritable(WrapFS):
 
     def appendbytes(self, path, data):
         _path = self.validatepath(path)
-        if not isinstance(data, bytes):
+        if not isinstance(data, six.binary_type):
             raise TypeError("must be bytes")
         if not self.isdir(dirname(_path)):
             raise errors.ResourceNotFound(dirname(path))
@@ -57,21 +56,21 @@ class WrapWritable(WrapFS):
             self._removed.remove(_path)
         return self._wfs.appendbytes(_path, data)
 
-    def appendtext(self, path, text):
-        _path = self.validatepath(path)
-        if not isinstance(text, six.text_type):
-            raise TypeError("must be unicode string")
-        if not self.isdir(dirname(_path)):
-            raise errors.ResourceNotFound(dirname(path))
-        self._wfs.makedirs(dirname(_path), recreate=True)
-        if self.exists(_path) and not self.isfile(_path):
-            raise errors.FileExpected(path)
-        if self._rfs.isfile(_path) and _path not in self._removed:
-            if not self._wfs.isfile(_path):
-                _copy_file_rich(self._rfs, _path, self._wfs)
-        if _path in self._removed:
-            self._removed.remove(_path)
-        return self._wfs.appendtext(_path, text)
+    # def appendtext(self, path, text):
+    #     _path = self.validatepath(path)
+    #     if not isinstance(text, six.text_type):
+    #         raise TypeError("must be unicode string")
+    #     if not self.isdir(dirname(_path)):
+    #         raise errors.ResourceNotFound(dirname(path))
+    #     self._wfs.makedirs(dirname(_path), recreate=True)
+    #     if self.exists(_path) and not self.isfile(_path):
+    #         raise errors.FileExpected(path)
+    #     if self._rfs.isfile(_path) and _path not in self._removed:
+    #         if not self._wfs.isfile(_path):
+    #             _copy_file_rich(self._rfs, _path, self._wfs)
+    #     if _path in self._removed:
+    #         self._removed.remove(_path)
+    #     return self._wfs.appendtext(_path, text)
 
     def close(self):
         if not self.isclosed():
@@ -201,6 +200,20 @@ class WrapWritable(WrapFS):
             _copy_file_rich(self._rfs, _path, self._wfs, _path)
         return self._wfs.setinfo(_path, info)
 
+    # def touch(self, path):
+    #     _path = self.validatepath(path)
+    #     if not self.isfile(_path):
+    #         with self.openbin(_path, 'wb') as f:
+    #             f.write(b'')
+
     def validatepath(self, path):
         super(WrapWritable, self).validatepath(path)
         return abspath(normpath(path))
+
+
+
+def _copy_file_rich(src_fs, src_path, dst_fs, dst_path=None):
+    dst_path = src_path if dst_path is None else dst_path
+    copy_file(src_fs, src_path, dst_fs, dst_path)
+    src_info = src_fs.getinfo(src_path, namespaces=UniversalContainer())
+    dst_fs.setinfo(dst_path, src_info.raw)

@@ -2,17 +2,24 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import os
-import io
-import sys
+import abc
+import collections
 import errno
 import importlib
-import collections
+import io
+import os
+import sys
 
 from six.moves import filterfalse
 
+from ..base import FS
+from ..wrapfs import WrapFS
+
+
+
 __all__ = [
     'UniversalContainer',
+    'NoWrapMeta'
     'unique',
     'import_from_names',
     'writable_path',
@@ -35,6 +42,21 @@ class UniversalContainer(collections.Container):
     """
     def __contains__(self, object):
         return True
+
+
+class NoWrapMeta(abc.ABCMeta):
+    """Prevent classes from using `WrapFS` implementations of the `FS` methods.
+    """
+
+    def __new__(mcs, name, bases, attrs): # noqa: D102,D105
+        _bases = bases + (FS,)
+        exclude = ('__init__',)
+        for base in _bases:
+            if base is not WrapFS:
+                for k,v in vars(base).items():
+                    if callable(v) and k not in exclude:
+                        attrs.setdefault(k, v)
+        return super(NoWrapMeta, mcs).__new__(mcs, name, bases, attrs)
 
 
 def unique(iterable, key=None):
