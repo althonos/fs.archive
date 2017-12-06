@@ -1,5 +1,5 @@
-fs.archive
-==========
+``fs.archive``
+==============
 
 |Source| |PyPI| |Travis| |Codecov| |Codacy| |Format| |License|
 
