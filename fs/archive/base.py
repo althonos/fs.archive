@@ -204,7 +204,8 @@ class ArchiveFS(WrapFS):
                 archive and/or in which to write the updated archive.
             proxy (FS): the filesystem to use as to perform temporary
                 write operations. Leave to `None` to use the default
-                defined in `fs.proxy.writer`.
+                defined in `~fs.archive.wrap.WrapWritable`.
+                **[default: `~fs.memoryfs.MemoryFS`]**
 
         Keyword Arguments:
             close_handle (boolean): if `True`, close the handle

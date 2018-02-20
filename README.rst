@@ -36,8 +36,6 @@ Requirements
 +-------------------+-----------------+-------------------+--------------------+
 | **six**           | |PyPI six|      | |Source six|      | |License six|      |
 +-------------------+-----------------+-------------------+--------------------+
-| **fs.proxy**      | |PyPI fs.proxy| | |Source fs.proxy| | |License fs.proxy| |
-+-------------------+-----------------+-------------------+--------------------+
 
 .. |License six| image:: https://img.shields.io/pypi/l/six.svg?maxAge=300&style=flat-square
    :target: https://choosealicense.com/licenses/mit/
@@ -56,15 +54,6 @@ Requirements
 
 .. |PyPI fs| image:: https://img.shields.io/pypi/v/fs.svg?maxAge=300&style=flat-square
    :target: https://pypi.python.org/pypi/fs
-
-.. |License fs.proxy| image:: https://img.shields.io/pypi/l/fs.proxy.svg?maxAge=300&style=flat-square
-   :target: https://choosealicense.com/licenses/mit/
-
-.. |Source fs.proxy| image:: https://img.shields.io/badge/source-GitHub-303030.svg?maxAge=300&style=flat-square
-   :target: https://github.com/althonos/fs.proxy
-
-.. |PyPI fs.proxy| image:: https://img.shields.io/pypi/v/fs.proxy.svg?maxAge=300&style=flat-square
-   :target: https://pypi.python.org/pypi/fs.proxy
 
 
 Installation
@@ -92,7 +81,7 @@ Additional features
     pure-python reading/writing ``ISO`` disk images (with support
     for ISO 9660 Levels 1, 2 and 3, Joliet and Rock Ridge extensions).
     Requires the `pycdlib <https://pypi.python.org/pypi/pycdlib>`_
-    module.
+    library.
 
 
 Usage
@@ -141,15 +130,14 @@ All the filesystems implemented in ``fs.archive`` also support reading from
 ..     to *read* the archive.
 ..
 .. ``ArchiveFS``
-..     a `proxy <https://github.com/althonos/fs.proxy>`_ filesystem
-..     used to make an archive seemingly writable.
+..     a `WrapFS` filesystem used to make an archive seemingly writable.
 
 
 See also
 --------
 
 * `fs <https://github.com/Pyfilesystem/pyfilesystem2>`_, the core pyfilesystem2 library
-* `fs.proxy <https://github.com/althonos/fs.proxy>`_, miscellaneous proxy filesystems
-  for pyfilesystem2
 * `fs.sshfs <https://github.com/althonos/fs.sshfs>`_, a SFTP/SSH implementation for
   pyfilesystem2 using `paramiko <https://github.com/paramiko/paramiko>`_
+* `fs.smbfs <https://github.com/althonos/fs.smbfs>`_, a SMB implementation for
+  pyfilesystem2 using `pysmb <https://github.com/miketeo/pysmb>`_
