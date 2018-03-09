@@ -256,4 +256,5 @@ class ArchiveFS(WrapFS):
         if not self.isclosed():
             if self._saver is not None:
                 self._saver.save(self)
+            self.delegate_fs().close()
             super(ArchiveFS, self).close()
