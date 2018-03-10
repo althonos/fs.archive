@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 
 import abc
 import collections
-import errno
 import importlib
 import io
 import os
@@ -19,7 +18,7 @@ from ..wrapfs import WrapFS
 
 __all__ = [
     'UniversalContainer',
-    'NoWrapMeta'
+    'NoWrapMeta',
     'unique',
     'import_from_names',
     'writable_path',
@@ -41,7 +40,7 @@ class UniversalContainer(collections.Container):
 
     """
 
-    def __contains__(self, object):  # noqa: D105
+    def __contains__(self, _):  # noqa: D105
         return True
 
 

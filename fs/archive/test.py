@@ -52,7 +52,8 @@ class ArchiveReadTestCases(object):
         """
         pass
 
-    def make_source_fs(self):
+    @staticmethod
+    def make_source_fs():
         """Create the source filesystem.
         """
         return open_fs('temp://')

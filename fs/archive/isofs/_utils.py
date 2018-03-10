@@ -3,9 +3,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import string
-import itertools
-
-import six
 
 from ...path import split, join
 

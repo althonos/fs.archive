@@ -8,15 +8,13 @@ import tarfile
 import tempfile
 import unittest
 
-from six.moves import filterfalse
-
 import fs.test
 import fs.wrap
 import fs.errors
 import fs.memoryfs
 import fs.archive.tarfs
 
-from fs.path import relpath, join, forcedir, abspath, recursepath
+from fs.path import join, forcedir, abspath, recursepath
 from fs.archive.test import ArchiveReadTestCases, ArchiveIOTestCases
 
 
