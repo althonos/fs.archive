@@ -45,7 +45,6 @@ def open_archive(fs_url, archive):
         as the registered extension.
 
     """
-
     it = pkg_resources.iter_entry_points('fs.archive.open_archive')
     entry_point = next((ep for ep in it if archive.endswith(ep.name)), None)
 

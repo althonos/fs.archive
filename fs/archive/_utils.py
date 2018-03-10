@@ -27,7 +27,6 @@ __all__ = [
 ]
 
 
-
 class UniversalContainer(collections.Container):
     """A container that contains everything.
 
@@ -39,8 +38,10 @@ class UniversalContainer(collections.Container):
         True
         >>> c in c
         True
+
     """
-    def __contains__(self, object):
+
+    def __contains__(self, object):  # noqa: D105
         return True
 
 

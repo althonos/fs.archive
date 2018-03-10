@@ -25,8 +25,10 @@ from ._utils import iso_path_slugify
 
 
 class ISOFile(io.RawIOBase):
+    """A read-only, seekable file on an ISO filesystem.
+    """
 
-    def __init__(self, fs, entry):
+    def __init__(self, fs, entry):  # noqa: D102, D107
 
         self._fs = fs
         self._cd = fs._cd
@@ -41,13 +43,13 @@ class ISOFile(io.RawIOBase):
         self._position = 0
         self._end = self._start + self._size
 
-    def readable(self):
+    def readable(self):  # noqa: D102
         return True
 
-    def writable(self):
+    def writable(self):  # noqa: D102
         return False
 
-    def read(self, size=-1):
+    def read(self, size=-1):  # noqa: D102
         with self._fs.lock():
             self._handle.seek(self._start + self._position)
             if size == -1 or self._position + size > self._size:
@@ -55,7 +57,7 @@ class ISOFile(io.RawIOBase):
             self._position += size
             return self._handle.read(size)
 
-    def seek(self, offset, whence=Seek.set):
+    def seek(self, offset, whence=Seek.set):  # noqa: D102
         if whence == Seek.set:
             if offset < 0:
                 raise ValueError("Negative seek position {}".format(offset))
@@ -74,14 +76,16 @@ class ISOFile(io.RawIOBase):
             )
         return self._position
 
-    def seekable(self):
+    def seekable(self):  # noqa: D102
         return True
 
-    def tell(self):
+    def tell(self):  # noqa: D102
         return self._position
 
 
 class ISOReadFS(base.ArchiveReadFS):
+    """A read-only ISO filesystem.
+    """
 
     _meta = {
         'standard': {
@@ -131,7 +135,6 @@ class ISOReadFS(base.ArchiveReadFS):
                     self._path_table[child_path] = child
 
             # Raise an error if no entry is found with the given name
-            #print(join(subpath, name))
             entry = self._path_table.get(join(subpath, name), None)
             if entry is None:
                 raise errors.ResourceNotFound(path)
@@ -166,7 +169,7 @@ class ISOReadFS(base.ArchiveReadFS):
 
         return Info(info)
 
-    def __init__(self, handle, **options):
+    def __init__(self, handle, **options):  # noqa: D102, D107
         super(ISOReadFS, self).__init__(handle, **options)
         self._cd = pycdlib.PyCdlib()
 
@@ -182,7 +185,7 @@ class ISOReadFS(base.ArchiveReadFS):
         self._path_table = weakref.WeakValueDictionary()
         self._path_table['/'] = self._cd.get_entry('/', self._joliet_only)
 
-    def getinfo(self, path, namespaces=None):
+    def getinfo(self, path, namespaces=None):  # noqa: D102
         _path = self.validatepath(path)
 
         if _path in '/':
@@ -194,7 +197,7 @@ class ISOReadFS(base.ArchiveReadFS):
             entry = self._get_cd_entry(_path)
             return self._get_info_from_entry(entry, namespaces)
 
-    def scandir(self, path, namespaces=None, page=None):
+    def scandir(self, path, namespaces=None, page=None):  # noqa: D102
         _path = self.validatepath(path)
 
         entry = self._get_cd_entry(_path)
@@ -206,10 +209,10 @@ class ISOReadFS(base.ArchiveReadFS):
             if not child.is_dot() and not child.is_dotdot():
                 yield self._get_info_from_entry(child, namespaces)
 
-    def listdir(self, path):
+    def listdir(self, path):  # noqa: D102
         return [child.name for child in self.scandir(path)]
 
-    def openbin(self, path, mode='r', buffering=-1, **options):
+    def openbin(self, path, mode='r', buffering=-1, **options):  # noqa: D102
         _path = self.validatepath(path)
         _mode = Mode(mode)
 
@@ -226,23 +229,24 @@ class ISOReadFS(base.ArchiveReadFS):
         entry = self._get_cd_entry(_path)
         return ISOFile(self, entry)
 
-    def getmeta(self, namespace="standard"):
+    def getmeta(self, namespace="standard"):  # noqa: D102
         meta = self._meta.get(namespace, {}).copy()
         if namespace == "standard" and not (self._rock_ridge or self._joliet):
             meta['case_insensitive'] = self._cd.interchange_level < 4
             meta['max_path_length'] = 255
         return meta
 
-    def getsize(self, path):
+    def getsize(self, path):  # noqa: D102
         _path = self.validatepath(path)
-
         entry = self._get_cd_entry(_path)
         return entry.file_length()
 
 
 class ISOSaver(base.ArchiveSaver):
+    """An ISO-9660 serializer.
+    """
 
-    def __init__(self, output, overwrite=False, initial_position=0, **options):
+    def __init__(self, output, overwrite=False, initial_position=0, **options):  # noqa: D102, D107
         super(ISOSaver, self).__init__(output, overwrite, initial_position)
 
         self.joliet = options.pop('joliet', False)
@@ -304,5 +308,8 @@ class ISOSaver(base.ArchiveSaver):
 
 
 class ISOFS(base.ArchiveFS):
+    """An ISO-9660 filesystem.
+    """
+
     _read_fs_cls = ISOReadFS
     _saver_cls = ISOSaver

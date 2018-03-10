@@ -26,6 +26,8 @@ from .. import base
 
 
 class ZipReadFS(base.ArchiveReadFS):
+    """A read-only filesystem within a ZIP archive.
+    """
 
     _meta = {
         'standard': {
@@ -42,7 +44,7 @@ class ZipReadFS(base.ArchiveReadFS):
         },
     }
 
-    def __init__(self, handle, **options):
+    def __init__(self, handle, **options):  # noqa: D102, D107
         super(ZipReadFS, self).__init__(handle, **options)
         self._zip = zipfile.ZipFile(self._handle)
 
@@ -69,7 +71,7 @@ class ZipReadFS(base.ArchiveReadFS):
         else:
             return list(self._zip.namelist())
 
-    def getinfo(self, path, namespaces=None):
+    def getinfo(self, path, namespaces=None):  # noqa: D102
         namespaces = namespaces or ()
         _path = self.validatepath(path)
 
@@ -115,7 +117,7 @@ class ZipReadFS(base.ArchiveReadFS):
 
         return Info(info)
 
-    def getbytes(self, path):
+    def getbytes(self, path):  # noqa: D102
         _path = self.validatepath(path)
 
         if self.isdir(_path):
@@ -126,25 +128,25 @@ class ZipReadFS(base.ArchiveReadFS):
         zip_bytes = self._zip.read(relpath(_path))
         return zip_bytes
 
-    def isfile(self, path):
+    def isfile(self, path):  # noqa: D102
         _path = self.validatepath(path).lower()
         return relpath(_path) in self._contents
 
-    def isdir(self, path):
+    def isdir(self, path):  # noqa: D102
         if path in '/':
             return True
         _path = self.validatepath(path).lower()
         return relpath(forcedir(_path)) in self._contents
 
-    def exists(self, path):
+    def exists(self, path):  # noqa: D102
         if path in '/':
             return True
         return self.isdir(path) or self.isfile(path)
 
-    def listdir(self, path):
+    def listdir(self, path):  # noqa: D102
         return [entry.name for entry in self.scandir(path)]
 
-    def scandir(self, path, namespaces=None, page=None):
+    def scandir(self, path, namespaces=None, page=None):  # noqa: D102
         _path = self.validatepath(path)
 
         if not self.exists(path):
@@ -174,7 +176,7 @@ class ZipReadFS(base.ArchiveReadFS):
                     seen.add(fullname)
                     yield info
 
-    def openbin(self, path, mode='r', buffering=-1, **options):
+    def openbin(self, path, mode='r', buffering=-1, **options):  # noqa: D102
         _path = relpath(self.validatepath(path))
         _mode = Mode(mode)
 
@@ -192,21 +194,23 @@ class ZipReadFS(base.ArchiveReadFS):
         bin_file = self._zip.open(_path, 'r')
         return RawWrapper(bin_file)
 
-    def close(self):
+    def close(self):  # noqa: D102
         if not self.isclosed():
             super(ZipReadFS, self).close()
             self._zip.close()
 
 
 class ZipSaver(base.ArchiveSaver):
+    """A ZIP archive serializer.
+    """
 
-    def __init__(self, output, overwrite=False, initial_position=0, **options):
+    def __init__(self, output, overwrite=False, initial_position=0, **options):  # noqa: D102, D107
         super(ZipSaver, self).__init__(output, overwrite, initial_position)
         self.encoding = options.pop('encoding', 'utf-8')
         self.compression = options.pop('compression', zipfile.ZIP_DEFLATED)
         self.buffer_size = options.pop('buffer_size', io.DEFAULT_BUFFER_SIZE)
 
-    def _to(self, handle, fs):
+    def _to(self, handle, fs):  # noqa: D102
         _zip = zipfile.ZipFile(
             handle, mode='w', compression=self.compression, allowZip64=True)
 
@@ -264,10 +268,13 @@ class ZipSaver(base.ArchiveSaver):
 
 
 class ZipFS(base.ArchiveFS):
+    """A filesystem within a ZIP archive.
+    """
+
     _read_fs_cls = ZipReadFS
     _saver_cls = ZipSaver
 
-    def __init__(self, handle, **options):
+    def __init__(self, handle, **options):  # noqa: D102, D107
         options.setdefault('compression', zipfile.ZIP_DEFLATED)
         options.setdefault('encoding', 'utf-8')
         options['proxy'] = options.pop('temp_fs', 'temp://__ziptemp__')

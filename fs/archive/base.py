@@ -40,6 +40,7 @@ class ArchiveSaver(object):
                 file. **[default: False]**
             initial_position (`int`): The initial position of the stream when
                 it was seen for the first time. **[default: 0]**
+
         """
         self.output = output
         self.overwrite = overwrite
@@ -51,6 +52,7 @@ class ArchiveSaver(object):
 
         Parameters:
             fs (`fs.base.FS`): the filesystem to save in the archive.
+
         """
         if self.stream:
             self.to_stream(fs)
@@ -62,6 +64,7 @@ class ArchiveSaver(object):
 
         Parameters:
             fs (`fs.base.FS`): the filesystem to save in the archive.
+
         """
         if self.overwrite: # If we need to overwrite, use temporary file
             tmp = '.'.join([self.output, 'tmp'])
@@ -75,6 +78,7 @@ class ArchiveSaver(object):
 
         Parameters:
             fs (`fs.base.FS`): the filesystem to save in the archive.
+
         """
         if self.overwrite: # If we need to overwrite, use temporary file
             fd, temp = tempfile.mkstemp()
@@ -98,6 +102,7 @@ class ArchiveSaver(object):
             handle (`io.IOBase`): a writable stream in which to write
                 the filesystem in an archive.
             fs (`fs.base.FS`): the filesystem to save.
+
         """
         raise NotImplementedError()
 
@@ -119,6 +124,7 @@ class ArchiveReadFS(FS):
         Keyword Arguments:
             close_handle (`boolean`): if ``True``, close the handle
                 when the filesystem is closed. **[default: True]**
+
         """
         super(ArchiveReadFS, self).__init__()
 
@@ -144,45 +150,45 @@ class ArchiveReadFS(FS):
         else:
             raise errors.CreateFailed("cannot use {}".format(handle))
 
-    def __repr__(self):
+    def __repr__(self):  # noqa: D105
         return "{}({!r})".format(
             self.__class__.__name__,
             getattr(self._handle, 'name', self._handle),
         )
 
-    def __str__(self):
+    def __str__(self):  # noqa: D105
         return "<{} '{}'>".format(
             self.__class__.__name__.lower(),
             getattr(self._handle, 'name', self._handle),
         )
 
     def _on_modification_attempt(self, path):
-        """Called when a modification is attempted on the archive.
+        """Call when a modification is attempted on the archive.
         """
         raise errors.ResourceReadOnly(path)
 
-    def setinfo(self, path, info):
+    def setinfo(self, path, info):  # noqa: D102
         self.check()
         self._on_modification_attempt(path)
 
-    def makedir(self, path, permissions=None, recreate=False):
+    def makedir(self, path, permissions=None, recreate=False):  # noqa: D102
         self.check()
         self._on_modification_attempt(path)
 
-    def remove(self, path):
+    def remove(self, path):  # noqa: D102
         self.check()
         self._on_modification_attempt(path)
 
-    def removedir(self, path):
+    def removedir(self, path):  # noqa: D102
         self.check()
         self._on_modification_attempt(path)
 
-    def getmeta(self, namespace="standard"):
+    def getmeta(self, namespace="standard"):  # noqa: D102
         if namespace == "standard":
             return self._meta['standard'].copy()
         return {}
 
-    def close(self):
+    def close(self):  # noqa: D102
         if not self.isclosed():
             if self._close_handle:
                 getattr(self._handle, 'close', lambda: None)()
@@ -193,6 +199,7 @@ class ArchiveReadFS(FS):
 class ArchiveFS(WrapFS):
     """A wrapper filesystem allowing to read, write and update an archive.
     """
+    
     _read_fs_cls = NotImplemented
     _saver_cls = NotImplemented
 
@@ -210,8 +217,8 @@ class ArchiveFS(WrapFS):
         Keyword Arguments:
             close_handle (boolean): if `True`, close the handle
                 when the filesystem is closed. **[default: True]**
-        """
 
+        """
         initial_position = 0
         read_fs = None
         self._saver = None
@@ -252,7 +259,7 @@ class ArchiveFS(WrapFS):
                   if read_fs is not None else open_fs(proxy)
         super(ArchiveFS, self).__init__(wrapped_fs)
 
-    def close(self):
+    def close(self):  # noqa: D102
         if not self.isclosed():
             if self._saver is not None:
                 self._saver.save(self)

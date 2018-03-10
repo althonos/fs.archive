@@ -30,12 +30,13 @@ from . import base
 class ArchiveReadTestCases(object):
     """Base class to test ArchiveReadFS subclasses.
     """
+
     long_names = False
     unicode_names = False
 
     @abc.abstractproperty
-    def _archive_read_fs(self):
-        """The ArchiveReadFS class to test.
+    def _archive_read_fs(self):  # noqa: D401
+        """The `ArchiveReadFS` class to test.
         """
         raise NotImplementedError
 
@@ -47,7 +48,7 @@ class ArchiveReadTestCases(object):
 
     @abc.abstractmethod
     def remove_archive(self, handle):
-        """Remove the archive in ``handle``
+        """Remove the archive in ``handle``.
         """
         pass
 
@@ -73,7 +74,7 @@ class ArchiveReadTestCases(object):
         if self.long_names:
             fs.settext('extras/'+'a'*300, 'This is a long file name !')
 
-    def setUp(self, handle):
+    def setUp(self, handle):  # noqa: D102
         self.handle = handle
         self.source_fs = source_fs = self.make_source_fs()
         self.build_source(source_fs)
@@ -86,7 +87,7 @@ class ArchiveReadTestCases(object):
             'load_archive did not return an ArchiveReadFS.'
         )
 
-    def tearDown(self):
+    def tearDown(self):  # noqa: D102
         self.source_fs.close()
         self.fs.close()
         self.remove_archive(self.handle)
@@ -114,7 +115,6 @@ class ArchiveReadTestCases(object):
     def test_scandir(self):
         """Check that `fs.base.FS.scandir` has the expected behaviour.
         """
-
         dirsize = self.fs.getdetails('foo').size
         if dirsize is None:
             self.skipTest("Filesystem does not support 'details' namespace")
@@ -191,6 +191,8 @@ class ArchiveReadTestCases(object):
         self.assertRaises(errors.FileExpected, self.fs.open, 'foo')
 
     def test_files_seek(self):
+        """Check that handles `seek` method work as intended.
+        """
         with self.fs.openbin('top.txt') as f:
             if f.seekable():
                 self.assertEqual(f.seek(0), 0)
@@ -266,6 +268,8 @@ class ArchiveReadTestCases(object):
         self.assertEqual(self.fs.getmeta("nonamespace"), {})
 
     def test_unicode_names(self):
+        """Check that the filesystem accepts unicode paths.
+        """
         if not self.unicode_names:
             self.skipTest("Set unicode_names to True in test case to enable")
 
@@ -279,6 +283,8 @@ class ArchiveReadTestCases(object):
             self.assertEqual(f.read(), b'I live in a unicode file !')
 
     def test_long_names(self):
+        """Check that the filesystem accepts path with more than 300 chars.
+        """
         if not self.long_names:
             self.skipTest("Set long_names to True in test case to enable")
 
@@ -293,9 +299,13 @@ class ArchiveReadTestCases(object):
             self.assertEqual(f.read(), b'This is a long file name !')
 
     def test_create_failed(self):
+        """Check that the filesystem constructor raises `CreateFailed`.
+        """
         self.assertRaises(errors.CreateFailed, self._archive_read_fs, None)
 
     def test_validatepath(self):
+        """Check that validatepath works as intended.
+        """
         self.assertRaises(errors.IllegalBackReference, self.fs.validatepath, '/..')
         self.assertRaises(errors.InvalidCharsInPath, self.fs.validatepath, '\0')
         self.assertEqual(self.fs.validatepath('foo/bar/../baz'), '/foo/baz')
@@ -307,16 +317,16 @@ class ArchiveIOTestCases(object):
     """
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls):  # noqa: D102
         cls.tempdir = tempfile.mkdtemp()
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls):  # noqa: D102
         shutil.rmtree(cls.tempdir)
 
     @abc.abstractproperty
-    def _archive_fs(self):
-        """The ArchiveFS class to test.
+    def _archive_fs(self):  # noqa: D401
+        """The `ArchiveFS` class to test.
         """
         raise NotImplementedError()
 
@@ -338,7 +348,7 @@ class ArchiveIOTestCases(object):
         """
         raise NotImplementedError()
 
-    def tearDown(self):
+    def tearDown(self):  # noqa: D102
         if hasattr(self, 'source_fs'):
             self.source_fs.close()
         if hasattr(getattr(self, 'handle', None), 'close'):
@@ -352,7 +362,7 @@ class ArchiveIOTestCases(object):
         fs.settext('baz/bar.txt', 'Savy ?')
         fs.makedir('egg')
 
-    def make_archive(self, handle):
+    def make_archive(self, handle):  # noqa: D102
         self.handle = handle
         self.source_fs = source_fs = self.make_source_fs()
         self.build_source(source_fs)

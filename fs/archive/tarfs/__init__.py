@@ -27,6 +27,8 @@ from .tarfile2 import TarFile
 
 
 class TarReadFS(base.ArchiveReadFS):
+    """A read-only filesystem within a TAR archive.
+    """
 
     _meta = {
         'standard': {
@@ -55,7 +57,7 @@ class TarReadFS(base.ArchiveReadFS):
         tarfile.LNKTYPE: ResourceType.symlink,
     }
 
-    def __init__(self, handle, **options):
+    def __init__(self, handle, **options):  # noqa: D102, D107
         super(TarReadFS, self).__init__(handle, **options)
         if isinstance(handle, io.IOBase):
             self._tar = TarFile.open(fileobj=handle, mode='r')
@@ -67,19 +69,19 @@ class TarReadFS(base.ArchiveReadFS):
 
         self._contents = self._get_contents(self._encoding)
 
-    def _get_contents(self, encoding):
+    def _get_contents(self, encoding):  # noqa: D102
         if six.PY2:
             return {n.decode(encoding) for n in self._tar.getnames()}
         else:
             return set(self._tar.getnames())
 
-    def exists(self, path):
+    def exists(self, path):  # noqa: D102
         _path = self.validatepath(path)
         if _path in '/':
             return True
         return relpath(_path) in self._contents
 
-    def isdir(self, path):
+    def isdir(self, path):  # noqa: D102
         _path = relpath(self.validatepath(path))
         if _path in '/':
             return True
@@ -89,7 +91,7 @@ class TarReadFS(base.ArchiveReadFS):
             _path = _path.encode(self._encoding)
         return self._tar.getmember(_path).isdir()
 
-    def isfile(self, path):
+    def isfile(self, path):  # noqa: D102
         _path = relpath(self.validatepath(path))
         if _path in '/' or _path not in self._contents:
             return False
@@ -97,7 +99,7 @@ class TarReadFS(base.ArchiveReadFS):
             _path = _path.encode(self._encoding)
         return self._tar.getmember(_path).isfile()
 
-    def listdir(self, path):
+    def listdir(self, path):  # noqa: D102
         _path = self.validatepath(path)
         if not self.exists(_path):
             raise errors.ResourceNotFound(path)
@@ -106,7 +108,7 @@ class TarReadFS(base.ArchiveReadFS):
         return [basename(f) for f in self._contents
                 if dirname(abspath(f)) == _path]
 
-    def getinfo(self, path, namespaces=None):
+    def getinfo(self, path, namespaces=None):  # noqa: D102
         namespaces = namespaces or ()
         _path = relpath(self.validatepath(path))
 
@@ -159,7 +161,7 @@ class TarReadFS(base.ArchiveReadFS):
 
         return Info(info)
 
-    def openbin(self, path, mode='r', buffering=-1, **options):
+    def openbin(self, path, mode='r', buffering=-1, **options):  # noqa: D102
         _path = relpath(self.validatepath(path))
         _mode = Mode(mode)
 
@@ -182,13 +184,15 @@ class TarReadFS(base.ArchiveReadFS):
 
 
 class TarSaver(base.ArchiveSaver):
+    """A TAR archive serializer.
+    """
 
     _compression_map = {
         '.tar': '', '.xz': 'xz', '.txz': 'xz',
         '.gz': 'gz', '.tgz':'gz', '.bz2': 'bz2', '.tbz':'bz2',
     }
 
-    def __init__(self, output, overwrite=False, initial_position=0, **options):
+    def __init__(self, output, overwrite=False, initial_position=0, **options):  # noqa: D102, D107
         super(TarSaver, self).__init__(output, overwrite, initial_position)
         self.encoding = options.pop('encoding', 'utf-8')
 
@@ -201,7 +205,7 @@ class TarSaver(base.ArchiveSaver):
 
         self.buffer_size = options.pop('buffer_size', io.DEFAULT_BUFFER_SIZE)
 
-    def _to(self, handle, fs):
+    def _to(self, handle, fs):  # noqa: D102
         attr_map = {
             'uid': 'uid', 'gid': 'gid', 'uname': 'user', 'gname': 'group'}
         type_map = {
@@ -252,10 +256,13 @@ class TarSaver(base.ArchiveSaver):
 
 
 class TarFS(base.ArchiveFS):
+    """A filesystem in a TAR archive.
+    """
+
     _read_fs_cls = TarReadFS
     _saver_cls = TarSaver
 
-    def __init__(self, handle, **options):
+    def __init__(self, handle, **options):  # noqa: D102, D107
         options.setdefault('compression', 'gz')
         options.setdefault('encoding', 'utf-8')
         options['proxy'] = options.pop('temp_fs', 'temp://__ziptemp__')

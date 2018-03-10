@@ -34,13 +34,13 @@ class WrapWritable(WrapFS):
     `WrapFS` implementation.
     """
 
-    def __init__(self, delegate_fs, writable_fs="mem://"):
+    def __init__(self, delegate_fs, writable_fs="mem://"):  # noqa: D107
         super(WrapWritable, self).__init__(delegate_fs)
         self._rfs = delegate_fs
         self._wfs = open_fs(writable_fs)
         self._removed = set()
 
-    def appendbytes(self, path, data):
+    def appendbytes(self, path, data):  # noqa: D102
         _path = self.validatepath(path)
         if not isinstance(data, six.binary_type):
             raise TypeError("must be bytes")
@@ -72,12 +72,12 @@ class WrapWritable(WrapFS):
     #         self._removed.remove(_path)
     #     return self._wfs.appendtext(_path, text)
 
-    def close(self):
+    def close(self):  # noqa: D102
         if not self.isclosed():
             self._wfs.close()
             super(WrapWritable, self).close()
 
-    def exists(self, path):
+    def exists(self, path):  # noqa: D102
         _path = self.validatepath(path)
         if self._wfs.exists(path):
             return True
@@ -85,7 +85,7 @@ class WrapWritable(WrapFS):
             return True
         return False
 
-    def getinfo(self, path, namespaces=None):
+    def getinfo(self, path, namespaces=None):  # noqa: D102
         _path = self.validatepath(path)
         if not self.exists(_path):
             raise errors.ResourceNotFound(path)
@@ -93,7 +93,7 @@ class WrapWritable(WrapFS):
             return self._wfs.getinfo(_path, namespaces)
         return self._rfs.getinfo(_path, namespaces)
 
-    def listdir(self, path):
+    def listdir(self, path):  # noqa: D102
         _path = self.validatepath(path)
 
         if not self.getinfo(path).is_dir:
@@ -109,7 +109,7 @@ class WrapWritable(WrapFS):
             return join(_path, name) in self._removed
         return list(unique(six.moves.filterfalse(was_removed, files_it)))
 
-    def makedir(self, path, permissions=None, recreate=False):
+    def makedir(self, path, permissions=None, recreate=False):  # noqa: D102
 
         _path = self.validatepath(path)
 
@@ -128,7 +128,7 @@ class WrapWritable(WrapFS):
         self._wfs.makedirs(dirname(_path), recreate=True)
         return self._wfs.makedir(_path, permissions, recreate)
 
-    def openbin(self, path, mode='r', buffering=-1, **options):
+    def openbin(self, path, mode='r', buffering=-1, **options):  # noqa: D102
         _path = self.validatepath(path)
         _mode = Mode(mode)
         _mode.validate_bin()
@@ -152,7 +152,7 @@ class WrapWritable(WrapFS):
             _copy_file_rich(self._rfs, _path, self._wfs)
             return self._wfs.openbin(path, mode, buffering, **options)
 
-    def remove(self, path):
+    def remove(self, path):  # noqa: D102
         _path = self.validatepath(path)
         if not self.getinfo(path).is_file:
             raise errors.FileExpected(path)
@@ -160,7 +160,7 @@ class WrapWritable(WrapFS):
         if self._wfs.isfile(_path):
             self._wfs.remove(_path)
 
-    def removedir(self, path):
+    def removedir(self, path):  # noqa: D102
         _path = self.validatepath(path)
         if not self.isempty(_path):
             raise errors.DirectoryNotEmpty(path)
@@ -168,7 +168,7 @@ class WrapWritable(WrapFS):
         if self._wfs.isdir(_path):
             self._wfs.removedir(_path)
 
-    def scandir(self, path, namespaces=None, page=None):
+    def scandir(self, path, namespaces=None, page=None):  # noqa: D102
         _path = self.validatepath(path)
 
         if not self.exists(_path):
@@ -182,16 +182,16 @@ class WrapWritable(WrapFS):
         if self._rfs.isdir(_path) and _path not in self._removed:
             it = itertools.chain(it, self._rfs.scandir(_path, namespaces))
 
-        def exists(info):
+        def _exists(info):
             return self.exists(join(_path, info.name))
-        it = six.moves.filter(exists, it)
+        it = six.moves.filter(_exists, it)
         it = unique(it, key=operator.attrgetter('name'))
         if page is not None:
             it = itertools.islice(it, page[0], page[1])
 
         return it
 
-    def setinfo(self, path, info):
+    def setinfo(self, path, info):  # noqa: D102
         _path = self.validatepath(path)
         if not self.exists(_path):
             raise errors.ResourceNotFound(path)
@@ -206,7 +206,7 @@ class WrapWritable(WrapFS):
     #         with self.openbin(_path, 'wb') as f:
     #             f.write(b'')
 
-    def validatepath(self, path):
+    def validatepath(self, path):  # noqa: D102
         super(WrapWritable, self).validatepath(path)
         return abspath(normpath(path))
 

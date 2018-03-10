@@ -12,7 +12,7 @@ from .._utils import import_from_names
 lzma = import_from_names('lzma', 'backports.lzma')
 
 
-class TarFile(tarfile.TarFile):
+class TarFile(tarfile.TarFile):  # noqa: D101
 
     OPEN_METH = {
         "tar": "taropen",
@@ -29,8 +29,11 @@ class TarFile(tarfile.TarFile):
         @classmethod
         def xzopen(cls, name, mode="r", fileobj=None, preset=None, **kwargs):
             """Open lzma compressed tar archive name for reading or writing.
-               Appending is not allowed.
 
+            Attention:
+                Appending is not allowed.
+
+            Note:
                Backported from `Python 3.6
                <https://github.com/python/cpython/blob/3.6/Lib/tarfile.py>`_
             """

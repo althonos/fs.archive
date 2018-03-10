@@ -33,7 +33,6 @@ def iso_name_increment(name, is_dir=False, max_length=8):
         >>> iso_name_increment('bar99', max_length=5)
         'ba100'
     """
-
     # Split the extension if needed
     if not is_dir and '.' in name:
         name, ext = name.rsplit('.')
@@ -71,7 +70,6 @@ def iso_path_slugify(path, path_table, is_dir=False, strict=True):
         >>> iso_path_slugify('/àbc.txt', path_table)
         '/_BC2.TXT'
     """
-
     # Split the path to extract the parent and basename
     parent, base = split(path)
 

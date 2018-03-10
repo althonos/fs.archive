@@ -6,9 +6,9 @@ from ...enums import Seek
 from ...iotools import RawWrapper as BaseWrapper
 
 
-class RawWrapper(BaseWrapper):
+class RawWrapper(BaseWrapper):  # noqa: D101
 
-    def seek(self, pos, whence=Seek.set):
+    def seek(self, pos, whence=Seek.set):  # noqa: D102
         if whence == Seek.set:
             if pos < 0:
                 raise ValueError("Negative seek position {}".format(pos))
