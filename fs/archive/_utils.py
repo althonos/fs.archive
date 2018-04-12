@@ -8,6 +8,7 @@ import importlib
 import io
 import os
 import sys
+import typing
 
 from six.moves import filterfalse
 
@@ -44,7 +45,7 @@ class UniversalContainer(collections.Container):
         return True
 
 
-class NoWrapMeta(abc.ABCMeta):
+class NoWrapMeta(typing.GenericMeta):
     """Prevent classes from using `WrapFS` implementations of the `FS` methods.
     """
 
