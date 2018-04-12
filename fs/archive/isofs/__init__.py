@@ -31,15 +31,15 @@ class ISOFile(io.RawIOBase):
     def __init__(self, fs, entry):  # noqa: D102, D107
 
         self._fs = fs
-        self._cd = fs._cd
+        self._cd = cd = fs._cd
         self._entry = entry
 
-        with self._fs.lock():
-            self._handle, self._size = pycdlib.dr.DROpenData(
-                entry, fs._cd.pvd.logical_block_size()
-            ).__enter__()
-            self._start = self._handle.tell()
+        self._handle, self._size = entry.data_fp, entry.data_length
 
+        if entry.original_data_location == entry.DATA_ON_ORIGINAL_ISO:
+            self._start = entry.orig_extent_loc * cd.pvd.logical_block_size()
+        else:
+            self._start = entry.fp_offset
         self._position = 0
         self._end = self._start + self._size
 
