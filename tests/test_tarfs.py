@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import io
 import os
+import six
 import tarfile
 import tempfile
 import unittest
@@ -103,18 +104,18 @@ class TestTarFSInferredDirectories(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        self.tmpfs = fs.open_fs("temp://")
+        cls.tmpfs = fs.open_fs("temp://")
 
     @classmethod
     def tearDownClass(cls):
-        self.tmpfs.close()
+        cls.tmpfs.close()
 
     def setUp(self):
-        self.tempfile = self.tmpfs.open(uuid.uuid4().hex)
+        self.tempfile = self.tmpfs.open('test.tar', 'wb+')
         with tarfile.open(mode="w", fileobj=self.tempfile) as tf:
-            tf.addfile(tarfile.TarInfo("foo/bar/baz/spam.txt"), io.BytesIO())
-            tf.addfile(tarfile.TarInfo("foo/eggs.bin"), io.BytesIO())
-            tf.addfile(tarfile.TarInfo("foo/yolk/beans.txt"), io.BytesIO())
+            tf.addfile(tarfile.TarInfo("foo/bar/baz/spam.txt"), io.StringIO())
+            tf.addfile(tarfile.TarInfo("foo/eggs.bin"), io.StringIO())
+            tf.addfile(tarfile.TarInfo("foo/yolk/beans.txt"), io.StringIO())
             info = tarfile.TarInfo("foo/yolk")
             info.type = tarfile.DIRTYPE
             tf.addfile(info, io.BytesIO())
@@ -130,9 +131,9 @@ class TestTarFSInferredDirectories(unittest.TestCase):
         self.assertFalse(self.fs.isfile("foo/bar"))
         self.assertFalse(self.fs.isfile("foo/bar/baz"))
         self.assertTrue(self.fs.isfile("foo/bar/baz/spam.txt"))
+        self.assertTrue(self.fs.isfile("foo/yolk/beans.txt"))
         self.assertTrue(self.fs.isfile("foo/eggs.bin"))
         self.assertFalse(self.fs.isfile("foo/eggs.bin/baz"))
-        self.assertFalse(self.fs.isfile("foo/yolk/beans.txt"))
 
     def test_isdir(self):
         self.assertTrue(self.fs.isdir("foo"))
@@ -145,7 +146,7 @@ class TestTarFSInferredDirectories(unittest.TestCase):
         self.assertFalse(self.fs.isdir("foo/yolk/beans.txt"))
 
     def test_listdir(self):
-        self.assertEqual(self.fs.listdir("foo"), ["yolk", "bar", "eggs.bin"])
+        self.assertEqual(sorted(self.fs.listdir("foo")), ["bar", "eggs.bin", "yolk"])
         self.assertEqual(self.fs.listdir("foo/bar"), ["baz"])
         self.assertEqual(self.fs.listdir("foo/bar/baz"), ["spam.txt"])
         self.assertEqual(self.fs.listdir("foo/yolk"), ["beans.txt"])
