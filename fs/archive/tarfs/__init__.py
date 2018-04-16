@@ -186,7 +186,7 @@ class TarSaver(base.ArchiveSaver):
 
     if six.PY2:
         def _encode(self, string):
-            return string.encode(self._encoding)
+            return string.encode(self.encoding)
     else:
         def _encode(self, string):
             return string
