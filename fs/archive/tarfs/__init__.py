@@ -5,22 +5,23 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import io
-import six
 import sys
 import time
 import tarfile
 import datetime
 
+import six
+
 from ... import errors
 from ...info import Info
 from ...mode import Mode
 from ...time import datetime_to_epoch
-from ...path import dirname, basename, relpath, abspath, splitext
+from ...path import basename, relpath, splitext, isbase, parts, frombase
 from ...enums import ResourceType
-from ..._fscompat import fsdecode, fsencode
 from ...permissions import Permissions
 
 from .. import base
+from .._utils import unique
 
 from .iotools import RawWrapper
 from .tarfile2 import TarFile
@@ -57,6 +58,21 @@ class TarReadFS(base.ArchiveReadFS):
         tarfile.LNKTYPE: ResourceType.symlink,
     }
 
+    if six.PY2:
+
+        def _decode(self, string):
+            return string.decode(self._encoding)
+
+        def _encode(self, string):
+            return string.encode(self._encoding)
+    else:
+
+        def _decode(self, string):
+            return string
+
+        def _encode(self, string):
+            return string
+
     def __init__(self, handle, **options):  # noqa: D102, D107
         super(TarReadFS, self).__init__(handle, **options)
         if isinstance(handle, io.IOBase):
@@ -67,46 +83,33 @@ class TarReadFS(base.ArchiveReadFS):
         self._encoding = encoding = options.get('encoding') or \
             sys.getdefaultencoding().replace('ascii', 'utf-8')
 
-        self._contents = self._get_contents(self._encoding)
-
-    def _get_contents(self, encoding):  # noqa: D102
-        if six.PY2:
-            return {n.decode(encoding) for n in self._tar.getnames()}
-        else:
-            return set(self._tar.getnames())
+        self._members = {
+            self._decode(info.name): info.isdir()
+                for info in self._tar.getmembers()
+        }
 
     def exists(self, path):  # noqa: D102
-        _path = self.validatepath(path)
-        if _path in '/':
-            return True
-        return relpath(_path) in self._contents
+        return self.isdir(path) or self.isfile(path)
 
     def isdir(self, path):  # noqa: D102
         _path = relpath(self.validatepath(path))
-        if _path in '/':
-            return True
-        if _path not in self._contents:
-            return False
-        if six.PY2:
-            _path = _path.encode(self._encoding)
-        return self._tar.getmember(_path).isdir()
+        try:
+            return self._members[_path]
+        except KeyError:
+            return any(isbase(_path, f) for f in self._members)
 
     def isfile(self, path):  # noqa: D102
         _path = relpath(self.validatepath(path))
-        if _path in '/' or _path not in self._contents:
-            return False
-        if six.PY2:
-            _path = _path.encode(self._encoding)
-        return self._tar.getmember(_path).isfile()
+        return not self._members.get(_path, True)
 
     def listdir(self, path):  # noqa: D102
-        _path = self.validatepath(path)
-        if not self.exists(_path):
-            raise errors.ResourceNotFound(path)
+        _path = relpath(self.validatepath(path))
         if not self.isdir(_path):
+            if not self.isfile(_path):
+                raise errors.ResourceNotFound(path)
             raise errors.DirectoryExpected(path)
-        return [basename(f) for f in self._contents
-                if dirname(abspath(f)) == _path]
+        children = (frombase(_path, n) for n in self._members if isbase(_path, n))
+        return list(unique(parts(child)[1] for child in children if child))
 
     def getinfo(self, path, namespaces=None):  # noqa: D102
         namespaces = namespaces or ()
@@ -115,14 +118,13 @@ class TarReadFS(base.ArchiveReadFS):
         if not self.exists(_path):
             raise errors.ResourceNotFound(path)
 
-        if _path in '/':
-            tar_info = tarfile.TarInfo()
+        try:
+            _inferred = False
+            tar_info = self._members[_path]
+        except KeyError:
+            _inferred = True
+            tar_info = tarfile.TarInfo(_raw_path)
             tar_info.type = tarfile.DIRTYPE
-        else:
-            if six.PY2:
-                tar_info = self._tar.getmember(_path.encode(self._encoding))
-            else:
-                tar_info = self._tar.getmember(_path)
 
         info = {'basic': {
             'name': basename(_path),
@@ -130,19 +132,15 @@ class TarReadFS(base.ArchiveReadFS):
         }}
 
         if 'details' in namespaces:
-            if _path in '/':
-                info['details'] = {
-                    'size': 0,
-                    'type': tarfile.DIRTYPE
-                }
-            else:
-                info['details'] = {
-                    'size': tar_info.size,
-                    'type': int(self._TYPE_MAP.get(
-                        tar_info.type, ResourceType.unknown)),
-                    'modified': tar_info.mtime
-                }
-        if 'access' in namespaces and _path not in '/':
+            info['details'] = {
+                'size': tar_info.size,
+                'type': int(self._TYPE_MAP.get(
+                    tar_info.type, ResourceType.unknown)),
+            }
+            if not _inferred:
+                info['details']['modified'] = tar_info.mtime
+
+        if 'access' in namespaces and not _inferred:
             info['access'] = {
                 'gid': tar_info.gid,
                 'group': tar_info.gname,
@@ -150,7 +148,8 @@ class TarReadFS(base.ArchiveReadFS):
                 'uid': tar_info.uid,
                 'user': tar_info.uname,
             }
-        if 'tar' in namespaces and _path not in '/':
+
+        if 'tar' in namespaces and not _inferred:
             info['tar'] = tar_info.get_info(self._encoding) \
                           if six.PY2 else tar_info.get_info()
             info['tar'].update({
@@ -170,10 +169,7 @@ class TarReadFS(base.ArchiveReadFS):
         if not self.exists(path):
             raise errors.ResourceNotFound(path)
 
-        if six.PY2:
-            _path = _path.encode(self._encoding)
-
-        tar_info = self._tar.getmember(_path)
+        tar_info = self._members[_path]
         if not tar_info.isfile():
             raise errors.FileExpected(path)
 
@@ -202,7 +198,6 @@ class TarSaver(base.ArchiveSaver):
             _, extension = splitext(output.name)
             self.compression = self._compression_map.get(extension, '')
 
-
         self.buffer_size = options.pop('buffer_size', io.DEFAULT_BUFFER_SIZE)
 
     def _to(self, handle, fs):  # noqa: D102
@@ -221,11 +216,8 @@ class TarSaver(base.ArchiveSaver):
 
         with _tar:
             for path, info in fs.walk.info(namespaces=('details', 'access', 'stat')):
-                tar_name = relpath(path)
-                if not six.PY3:
-                    tar_name = tar_name.encode(self.encoding, 'replace')
 
-                tar_info = tarfile.TarInfo(tar_name)
+                tar_info = tarfile.TarInfo(self._encode(relpath(path)))
 
                 if info.has_namespace('stat'):
                     mtime = info.get('stat', 'st_mtime', current_time)
