@@ -58,19 +58,12 @@ class TarReadFS(base.ArchiveReadFS):
         tarfile.LNKTYPE: ResourceType.symlink,
     }
 
-    if six.PY2:
 
+    if six.PY2:
         def _decode(self, string):
             return string.decode(self._encoding)
-
-        def _encode(self, string):
-            return string.encode(self._encoding)
     else:
-
         def _decode(self, string):
-            return string
-
-        def _encode(self, string):
             return string
 
     def __init__(self, handle, **options):  # noqa: D102, D107
@@ -84,7 +77,7 @@ class TarReadFS(base.ArchiveReadFS):
             sys.getdefaultencoding().replace('ascii', 'utf-8')
 
         self._members = {
-            self._decode(info.name): info.isdir()
+            self._decode(info.name): info
                 for info in self._tar.getmembers()
         }
 
@@ -94,13 +87,16 @@ class TarReadFS(base.ArchiveReadFS):
     def isdir(self, path):  # noqa: D102
         _path = relpath(self.validatepath(path))
         try:
-            return self._members[_path]
+            return self._members[_path].isdir()
         except KeyError:
             return any(isbase(_path, f) for f in self._members)
 
     def isfile(self, path):  # noqa: D102
         _path = relpath(self.validatepath(path))
-        return not self._members.get(_path, True)
+        try:
+            return self._members[_path].isfile()
+        except KeyError:
+            return False
 
     def listdir(self, path):  # noqa: D102
         _path = relpath(self.validatepath(path))
@@ -109,7 +105,7 @@ class TarReadFS(base.ArchiveReadFS):
                 raise errors.ResourceNotFound(path)
             raise errors.DirectoryExpected(path)
         children = (frombase(_path, n) for n in self._members if isbase(_path, n))
-        return list(unique(parts(child)[1] for child in children if child))
+        return list(unique(parts(child)[1] for child in children if relpath(child)))
 
     def getinfo(self, path, namespaces=None):  # noqa: D102
         namespaces = namespaces or ()
@@ -123,7 +119,7 @@ class TarReadFS(base.ArchiveReadFS):
             tar_info = self._members[_path]
         except KeyError:
             _inferred = True
-            tar_info = tarfile.TarInfo(_raw_path)
+            tar_info = tarfile.TarInfo(_path)
             tar_info.type = tarfile.DIRTYPE
 
         info = {'basic': {
@@ -187,6 +183,13 @@ class TarSaver(base.ArchiveSaver):
         '.tar': '', '.xz': 'xz', '.txz': 'xz',
         '.gz': 'gz', '.tgz':'gz', '.bz2': 'bz2', '.tbz':'bz2',
     }
+
+    if six.PY2:
+        def _encode(self, string):
+            return string.encode(self._encoding)
+    else:
+        def _encode(self, string):
+            return string
 
     def __init__(self, output, overwrite=False, initial_position=0, **options):  # noqa: D102, D107
         super(TarSaver, self).__init__(output, overwrite, initial_position)

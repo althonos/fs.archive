@@ -114,6 +114,10 @@ class TestTarFSInferredDirectories(unittest.TestCase):
         with tarfile.open(mode="w", fileobj=self.tempfile) as tf:
             tf.addfile(tarfile.TarInfo("foo/bar/baz/spam.txt"), io.BytesIO())
             tf.addfile(tarfile.TarInfo("foo/eggs.bin"), io.BytesIO())
+            tf.addfile(tarfile.TarInfo("foo/yolk/beans.txt"), io.BytesIO())
+            info = tarfile.TarInfo("foo/yolk")
+            info.type = tarfile.DIRTYPE
+            tf.addfile(info, io.BytesIO())
         self.tempfile.seek(0)
         self.fs = fs.archive.tarfs.TarReadFS(self.tempfile)
 
@@ -127,20 +131,24 @@ class TestTarFSInferredDirectories(unittest.TestCase):
         self.assertFalse(self.fs.isfile("foo/bar/baz"))
         self.assertTrue(self.fs.isfile("foo/bar/baz/spam.txt"))
         self.assertTrue(self.fs.isfile("foo/eggs.bin"))
-        self.assertFalse(self.fs.isdir("foo/eggs.bin/baz"))
+        self.assertFalse(self.fs.isfile("foo/eggs.bin/baz"))
+        self.assertFalse(self.fs.isfile("foo/yolk/beans.txt"))
 
     def test_isdir(self):
         self.assertTrue(self.fs.isdir("foo"))
+        self.assertTrue(self.fs.isdir("foo/yolk"))
         self.assertTrue(self.fs.isdir("foo/bar"))
         self.assertTrue(self.fs.isdir("foo/bar/baz"))
         self.assertFalse(self.fs.isdir("foo/bar/baz/spam.txt"))
         self.assertFalse(self.fs.isdir("foo/eggs.bin"))
         self.assertFalse(self.fs.isdir("foo/eggs.bin/baz"))
+        self.assertFalse(self.fs.isdir("foo/yolk/beans.txt"))
 
     def test_listdir(self):
-        self.assertEqual(self.fs.listdir("foo"), ["bar", "eggs.bin"])
+        self.assertEqual(self.fs.listdir("foo"), ["yolk", "bar", "eggs.bin"])
         self.assertEqual(self.fs.listdir("foo/bar"), ["baz"])
         self.assertEqual(self.fs.listdir("foo/bar/baz"), ["spam.txt"])
+        self.assertEqual(self.fs.listdir("foo/yolk"), ["beans.txt"])
 
     def test_getinfo(self):
         info = self.fs.getinfo("foo/bar/baz", namespaces=UniversalContainer())
