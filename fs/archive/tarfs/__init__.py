@@ -82,7 +82,8 @@ class TarReadFS(base.ArchiveReadFS):
         }
 
     def exists(self, path):  # noqa: D102
-        return self.isdir(path) or self.isfile(path)
+        _path = self.validatepath(path)
+        return any(isbase(_path, f) for f in self._members)
 
     def isdir(self, path):  # noqa: D102
         _path = relpath(self.validatepath(path))
@@ -100,9 +101,7 @@ class TarReadFS(base.ArchiveReadFS):
 
     def listdir(self, path):  # noqa: D102
         _path = relpath(self.validatepath(path))
-        if not self.isdir(_path):
-            if not self.isfile(_path):
-                raise errors.ResourceNotFound(path)
+        if self.gettype(_path) is not ResourceType.directory:
             raise errors.DirectoryExpected(path)
         children = (frombase(_path, n) for n in self._members if isbase(_path, n))
         return list(unique(parts(child)[1] for child in children if relpath(child)))
@@ -111,13 +110,12 @@ class TarReadFS(base.ArchiveReadFS):
         namespaces = namespaces or ()
         _path = relpath(self.validatepath(path))
 
-        if not self.exists(_path):
-            raise errors.ResourceNotFound(path)
-
         try:
             _inferred = False
             tar_info = self._members[_path]
         except KeyError:
+            if not self.isdir(_path):
+                raise errors.ResourceNotFound(path)
             _inferred = True
             tar_info = tarfile.TarInfo(_path)
             tar_info.type = tarfile.DIRTYPE
@@ -136,7 +134,7 @@ class TarReadFS(base.ArchiveReadFS):
             if not _inferred:
                 info['details']['modified'] = tar_info.mtime
 
-        if 'access' in namespaces and not _inferred:
+        if not _inferred and 'access' in namespaces:
             info['access'] = {
                 'gid': tar_info.gid,
                 'group': tar_info.gname,
@@ -145,7 +143,7 @@ class TarReadFS(base.ArchiveReadFS):
                 'user': tar_info.uname,
             }
 
-        if 'tar' in namespaces and not _inferred:
+        if not _inferred and 'tar' in namespaces:
             info['tar'] = tar_info.get_info(self._encoding) \
                           if six.PY2 else tar_info.get_info()
             info['tar'].update({
@@ -162,14 +160,10 @@ class TarReadFS(base.ArchiveReadFS):
 
         if _mode.writing:
             self._on_modification_attempt(path)
-        if not self.exists(path):
-            raise errors.ResourceNotFound(path)
-
-        tar_info = self._members[_path]
-        if not tar_info.isfile():
+        if self.gettype(path) is not ResourceType.file:
             raise errors.FileExpected(path)
 
-        bin_file = self._tar.extractfile(tar_info)
+        bin_file = self._tar.extractfile(self._members[_path])
         if six.PY2: bin_file.flush = lambda: None
 
         return RawWrapper(bin_file)
