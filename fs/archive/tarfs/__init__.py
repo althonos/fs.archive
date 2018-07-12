@@ -192,7 +192,11 @@ class TarSaver(base.ArchiveSaver):
         self.compression = options.pop('compression', '')
 
         if not self.compression and hasattr(output, 'name'):
-            _, extension = splitext(output.name)
+            if isinstance(output.name, six.binary_type):
+                name = output.name.decode(sys.getfilesystemencoding())
+            else:
+                name = output.name
+            _, extension = splitext(name)
             self.compression = self._compression_map.get(extension, '')
 
         self.buffer_size = options.pop('buffer_size', io.DEFAULT_BUFFER_SIZE)
