@@ -182,7 +182,7 @@ class ISOReadFS(base.ArchiveReadFS):
         self._rock_ridge = self._cd.rock_ridge is not None
         self._joliet_only = self._joliet and not self._rock_ridge
 
-        self._path_table = weakref.WeakValueDictionary()
+        self._path_table = {} #weakref.WeakValueDictionary()
         self._path_table['/'] = self._cd.get_entry('/', self._joliet_only)
 
     def getinfo(self, path, namespaces=None):  # noqa: D102
