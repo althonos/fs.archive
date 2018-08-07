@@ -18,11 +18,21 @@ from ...mode import Mode
 from ...time import datetime_to_epoch
 from ...path import forcedir, relpath, dirname, basename, abspath
 from ...path import iteratepath, recursepath, frombase, join
-from ...enums import ResourceType
+from ...enums import ResourceType, Seek
 from ...iotools import RawWrapper
 from ..._fscompat import fsdecode, fsencode
 
 from .. import base
+
+
+class _ZipFileWrapper(RawWrapper):
+
+    def seek(self, offset, whence=Seek.set):
+        if whence == Seek.set and offset < 0:
+            raise ValueError('cannot seek to negative offset')
+        elif whence == Seek.end and offset > 0:
+            raise ValueError('cannot seek after end position')
+        return super(_ZipFileWrapper, self).seek(offset, whence)
 
 
 class ZipReadFS(base.ArchiveReadFS):
@@ -192,7 +202,7 @@ class ZipReadFS(base.ArchiveReadFS):
             _path = _path.encode(self._encoding)
 
         bin_file = self._zip.open(_path, 'r')
-        return RawWrapper(bin_file)
+        return _ZipFileWrapper(bin_file)
 
     def close(self):  # noqa: D102
         if not self.isclosed():
