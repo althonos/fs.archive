@@ -45,7 +45,7 @@ class UniversalContainer(collections.Container):
         return True
 
 
-class NoWrapMeta(typing.GenericMeta):
+class NoWrapMeta(getattr(typing, 'GenericMeta', abc.ABCMeta)):
     """Prevent classes from using `WrapFS` implementations of the `FS` methods.
     """
 
