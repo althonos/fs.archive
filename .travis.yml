@@ -19,7 +19,7 @@ before_install:
 - pip install -U pip setuptools wheel
 
 install:
-- pip install .[alldev]
+- pip install .[test,dev]
 
 script:
 - green
