@@ -1,5 +1,8 @@
-``fs.archive``
-==============
+``fs.archive`` |star me|
+========================
+
+.. |star me| image:: https://img.shields.io/github/stars/althonos/fs.archive.svg?style=social&maxAge=3600&label=Star
+   :target: https://github.com/althonos/fs.archive/stargazers
 
 |Source| |PyPI| |Travis| |Codecov| |Codacy| |Format| |License|
 
