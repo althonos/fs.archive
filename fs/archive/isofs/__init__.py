@@ -224,8 +224,6 @@ class ISOReadFS(base.ArchiveReadFS):
         elif not self.isfile(_path):
             raise errors.ResourceNotFound(path)
 
-        print("IN OPENBIN: ", _path)
-
         entry = self._get_cd_entry(_path)
         return ISOFile(self, entry)
 
