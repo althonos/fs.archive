@@ -3,7 +3,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import abc
-import collections
 import importlib
 import io
 import os
@@ -11,6 +10,7 @@ import sys
 import typing
 
 from six.moves import filterfalse
+from six.moves.collections_abc import Container
 
 from ..base import FS
 from ..wrapfs import WrapFS
@@ -27,7 +27,7 @@ __all__ = [
 ]
 
 
-class UniversalContainer(collections.Container):
+class UniversalContainer(Container):
     """A container that contains everything.
 
     Example:
