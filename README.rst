@@ -4,13 +4,13 @@
 .. |star me| image:: https://img.shields.io/github/stars/althonos/fs.archive.svg?style=social&maxAge=3600&label=Star
    :target: https://github.com/althonos/fs.archive/stargazers
 
-|Source| |PyPI| |Travis| |Codecov| |Codacy| |Format| |License|
+|Source| |PyPI| |Actions| |Codecov| |Codacy| |Format| |License|
 
 .. |Codacy| image:: https://img.shields.io/codacy/grade/eadf418db5a84efd9fa1b470529dcad6/master.svg?style=flat-square&maxAge=300
    :target: https://www.codacy.com/app/althonos/fs.archive/dashboard
 
-.. |Travis| image:: https://img.shields.io/travis/althonos/fs.archive/master.svg?style=flat-square&maxAge=300
-   :target: https://travis-ci.org/althonos/fs.archive/branches
+.. |Actions| image:: (https://img.shields.io/github/workflow/status/althonos/fs.archive/Test/master?style=flat-square&maxAge=300
+   :target: https://github.com/althonos/fs.archive/actions
 
 .. |Codecov| image:: https://img.shields.io/codecov/c/github/althonos/fs.archive/master.svg?style=flat-square&maxAge=300
    :target: https://codecov.io/gh/althonos/fs.archive
