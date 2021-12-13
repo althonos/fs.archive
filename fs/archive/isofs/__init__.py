@@ -103,13 +103,8 @@ class ISOReadFS(base.ArchiveReadFS):
     }
 
     def _get_name_from_entry(self, entry):
-        if self._rock_ridge:
-            if entry.rock_ridge is not None:
-                return entry.rock_ridge.name().decode('utf-8')
-            else:
-                return entry.file_identifier().decode('ascii').lower().rstrip(';1').rstrip('.')
-        elif self._joliet:
-            return entry.file_identifier().decode('utf-16be')
+        if self._cd.has_rock_ridge() and entry.rock_ridge is not None:
+            return entry.rock_ridge.name().decode('utf-8')
         else:
             return entry.file_identifier().decode('ascii').lower().rstrip(';1').rstrip('.')
 
@@ -165,7 +160,7 @@ class ISOReadFS(base.ArchiveReadFS):
                 'type': ResourceType.directory if entry.is_dir() else ResourceType.file,
             }
 
-            if self._rock_ridge and entry.rock_ridge is not None:
+            if self._cd.has_rock_ridge() and entry.rock_ridge is not None:
                 if entry.rock_ridge.is_symlink():
                     details['type'] = ResourceType.symlink
 
@@ -185,7 +180,7 @@ class ISOReadFS(base.ArchiveReadFS):
         self._joliet_only = self._joliet and not self._rock_ridge
 
         self._path_table = {} #weakref.WeakValueDictionary()
-        self._path_table['/'] = self._cd.get_entry('/', self._joliet_only)
+        self._path_table['/'] = self._cd.get_record(iso_path='/')
 
     def getinfo(self, path, namespaces=None):  # noqa: D102
         _path = self.validatepath(path)
