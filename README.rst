@@ -9,7 +9,7 @@
 .. |Codacy| image:: https://img.shields.io/codacy/grade/eadf418db5a84efd9fa1b470529dcad6/master.svg?style=flat-square&maxAge=300
    :target: https://www.codacy.com/app/althonos/fs.archive/dashboard
 
-.. |Actions| image:: (https://img.shields.io/github/workflow/status/althonos/fs.archive/Test/master?style=flat-square&maxAge=300
+.. |Actions| image:: https://img.shields.io/github/workflow/status/althonos/fs.archive/Test/master?style=flat-square&maxAge=300
    :target: https://github.com/althonos/fs.archive/actions
 
 .. |Codecov| image:: https://img.shields.io/codecov/c/github/althonos/fs.archive/master.svg?style=flat-square&maxAge=300
