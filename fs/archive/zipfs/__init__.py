@@ -58,7 +58,7 @@ class ZipReadFS(base.ArchiveReadFS):
         super(ZipReadFS, self).__init__(handle, **options)
         self._zip = zipfile.ZipFile(self._handle)
 
-        self._encoding = encoding = options.get('encoding') or \
+        self._encoding = options.get('encoding') or \
             sys.getdefaultencoding().replace('ascii', 'utf-8')
 
         self._namelist = self._get_namelist(self._encoding)
@@ -165,23 +165,23 @@ class ZipReadFS(base.ArchiveReadFS):
             raise errors.DirectoryExpected(path)
 
         seen = set()
+        basic_only = (
+            namespaces is None
+            or (len(namespaces) == 1 and next(iter(namespaces)) == "basic")
+        )
 
         for fullname in self._namelist:
             fullname = abspath(fullname.rstrip('/'))
-
             if isbase(_path, fullname) and fullname != _path:
-
                 name = iteratepath(relpath(frombase(_path, fullname)))[0]
                 fullname = join(_path, name)
-
-                if namespaces is None:
+                if basic_only:
                     info = Info({'basic': {
                         'name': name,
                         'is_dir': self.isdir(fullname)
                     }})
                 else:
                     info = self.getinfo(fullname, namespaces=namespaces)
-
                 if fullname not in seen:
                     seen.add(fullname)
                     yield info
