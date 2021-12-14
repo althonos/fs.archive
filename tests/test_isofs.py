@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 
 import os
 import io
-import pycdlib
 import tempfile
 import unittest
 
@@ -15,11 +14,21 @@ import fs.test
 import fs.wrap
 import fs.errors
 import fs.memoryfs
-import fs.archive.isofs
 
 from fs.path import relpath, join, forcedir, abspath, recursepath
 from fs.archive.test import ArchiveReadTestCases, ArchiveIOTestCases
-from fs.archive.isofs import _utils
+
+try:
+    import pycdlib
+except ImportError:
+    pycdlib = None
+
+try:
+    from fs.archive.isofs import ISOReadFS, ISOFS, ISOSaver
+    from fs.archive.isofs import _utils as isofs_utils
+except ImportError:
+    SevenZipReadFS = SevenZipFS = SevenZipSaver = None
+    isofs_utils = None
 
 
 def compress(rr, joliet, il):
@@ -55,11 +64,12 @@ def iso_path(iso_entry, joliet=False, rock_ridge=False):
 
 ### rw FS ###
 
+@unittest.skipUnless(pycdlib, 'pycdlib not available')
 class TestISOFS(fs.test.FSTestCases, unittest.TestCase):
 
     def make_fs(self):
         self.tempfile = tempfile.mktemp()
-        return fs.archive.isofs.ISOFS(self.tempfile)
+        return ISOFS(self.tempfile)
 
     def destroy_fs(self, fs):
         fs.close()
@@ -70,12 +80,13 @@ class TestISOFS(fs.test.FSTestCases, unittest.TestCase):
 
 ### ro FS ###
 
+@unittest.skipUnless(pycdlib, 'pycdlib not available')
 class _TestISOReadFS(ArchiveReadTestCases):
 
     long_names = False
     unicode_names = False
     make_source_fs = staticmethod(fs.memoryfs.MemoryFS)
-    _archive_read_fs = fs.archive.isofs.ISOReadFS
+    _archive_read_fs = ISOReadFS
 
     @staticmethod
     def remove_archive(handle):
@@ -86,7 +97,7 @@ class _TestISOReadFS(ArchiveReadTestCases):
         super(_TestISOReadFS, self).setUp(handle)
 
     def test_create_failed(self):
-        self.assertRaises(fs.errors.CreateFailed, fs.archive.isofs.ISOFS, 1)
+        self.assertRaises(fs.errors.CreateFailed, ISOFS, 1)
 
 
 class TestISOv1ReadFS(_TestISOReadFS, unittest.TestCase):
@@ -131,15 +142,16 @@ class TestISOJolietReadFS(_TestISOReadFS, unittest.TestCase):
 
 ### FS IO ###
 
+@unittest.skipUnless(pycdlib, 'pycdlib not available')
 class TestISOFSio(ArchiveIOTestCases, unittest.TestCase):
 
     compress = staticmethod(compress('1.12', False, 1))
     make_source_fs = staticmethod(fs.memoryfs.MemoryFS)
-    _archive_fs = fs.archive.isofs.ISOFS
+    _archive_fs = ISOFS
 
     @staticmethod
     def load_archive(handle):
-        return fs.archive.isofs.ISOFS(handle)
+        return ISOFS(handle)
 
     @staticmethod
     def iter_entries(handle):
@@ -182,6 +194,7 @@ class TestISOFSio(ArchiveIOTestCases, unittest.TestCase):
 
 ### FS Saver ###
 
+@unittest.skipUnless(pycdlib, 'pycdlib not available')
 class TestISOSaver(unittest.TestCase):
 
     make_source_fs = staticmethod(fs.memoryfs.MemoryFS)
@@ -197,11 +210,11 @@ class TestISOSaver(unittest.TestCase):
         source.settext('/☭☭.txt', 'some communism')
 
         stream = io.BytesIO()
-        saver = fs.archive.isofs.ISOSaver(stream)
+        saver = ISOSaver(stream)
         saver.save(source)
 
         stream.seek(0)
-        iso = fs.archive.isofs.ISOReadFS(stream)
+        iso = ISOReadFS(stream)
         self.assertEqual(
             sorted(iso.listdir('/')),
             ['éé.txt', 'üü.txt' ,'☭☭.txt', '😋'],
@@ -215,14 +228,15 @@ class TestISOSaver(unittest.TestCase):
 
 ### utils ###
 
+@unittest.skipUnless(isofs_utils, 'fs.archive.isofs not available')
 class TestISOUtils(unittest.TestCase):
 
     def test_name_slugify(self):
-        slugify = _utils.iso_name_slugify
+        slugify = isofs_utils.iso_name_slugify
         self.assertEqual(slugify("épatant"), "_patant")
 
     def test_name_increment(self):
-        increment = _utils.iso_name_increment
+        increment = isofs_utils.iso_name_increment
         self.assertEqual(increment('foo.txt'), 'foo1.txt')
         self.assertEqual(increment('foo1.txt'), 'foo2.txt')
         self.assertEqual(increment('foo9.txt'), 'foo10.txt')
@@ -233,7 +247,7 @@ class TestISOUtils(unittest.TestCase):
         self.assertEqual(increment('bar9', max_length=4), 'ba10')
 
     def test_path_slugify(self):
-        slugify = _utils.iso_path_slugify
+        slugify = isofs_utils.iso_path_slugify
         pt = {'/': '/'}
         self.assertEqual(slugify('/abc.txt', pt), '/ABC.TXT')
         self.assertEqual(slugify('/àbc.txt', pt), '/_BC.TXT')
