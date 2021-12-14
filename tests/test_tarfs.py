@@ -22,6 +22,9 @@ from fs.archive.test import ArchiveReadTestCases, ArchiveIOTestCases
 from fs.archive._utils import UniversalContainer
 
 
+FS_VERSION = tuple(map(int, fs.__version__.split('.')))
+
+
 def tar_compress(handle, source_fs):
     if hasattr(handle, 'seek') and handle.seekable():
         handle.seek(0)
@@ -40,6 +43,14 @@ class TestTarFS(fs.test.FSTestCases, unittest.TestCase):
         if os.path.exists(self.tempfile):
             os.remove(self.tempfile)
         del self.tempfile
+
+    @unittest.skipIf(FS_VERSION < (2, 4, 15), "fails because of PyFilesystem2#509")
+    def test_move(self):
+        super(TestTarFS, self).test_move()
+
+    @unittest.skipIf(FS_VERSION < (2, 4, 15), "fails because of PyFilesystem2#509")
+    def test_move_file_same_fs(self):
+        super(TestTarFS, self).test_move_file_same_fs()
 
 
 class TestTarReadFS(ArchiveReadTestCases, unittest.TestCase):

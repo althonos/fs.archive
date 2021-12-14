@@ -31,6 +31,9 @@ except ImportError:
     isofs_utils = None
 
 
+FS_VERSION = tuple(map(int, fs.__version__.split('.')))
+
+
 def compress(rr, joliet, il):
     def iso_compress(handle, source_fs):
         if hasattr(handle, 'seek') and handle.seekable():
@@ -77,6 +80,13 @@ class TestISOFS(fs.test.FSTestCases, unittest.TestCase):
             os.remove(self.tempfile)
         del self.tempfile
 
+    @unittest.skipIf(FS_VERSION < (2, 4, 15), "fails because of PyFilesystem2#509")
+    def test_move(self):
+        super(TestISOFS, self).test_move()
+
+    @unittest.skipIf(FS_VERSION < (2, 4, 15), "fails because of PyFilesystem2#509")
+    def test_move_file_same_fs(self):
+        super(TestISOFS, self).test_move_file_same_fs()
 
 ### ro FS ###
 

@@ -29,6 +29,8 @@ except ImportError:
     SevenZipReadFS = SevenZipFS = SevenZipSaver = None
 
 
+FS_VERSION = tuple(map(int, fs.__version__.split('.')))
+
 
 def sevenzip_compress(handle, source_fs):
     if hasattr(handle, 'seek') and handle.seekable():
@@ -49,6 +51,14 @@ class TestSevenZipFS(fs.test.FSTestCases, unittest.TestCase):
         if os.path.exists(self.tempfile):
             os.remove(self.tempfile)
         del self.tempfile
+
+    @unittest.skipIf(FS_VERSION < (2, 4, 15), "fails because of PyFilesystem2#509")
+    def test_move(self):
+        super(TestSevenZipFS, self).test_move()
+
+    @unittest.skipIf(FS_VERSION < (2, 4, 15), "fails because of PyFilesystem2#509")
+    def test_move_file_same_fs(self):
+        super(TestSevenZipFS, self).test_move_file_same_fs()
 
 
 @unittest.skipUnless(py7zr, 'py7zr not available')
