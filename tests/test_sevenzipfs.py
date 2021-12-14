@@ -14,7 +14,7 @@ import fs.test
 import fs.wrap
 import fs.errors
 import fs.memoryfs
-
+from fs.errors import PermissionDenied, CreateFailed, OperationFailed
 from fs.path import relpath, join, forcedir, abspath, recursepath
 from fs.archive.test import ArchiveReadTestCases, ArchiveIOTestCases
 
@@ -28,14 +28,18 @@ try:
 except ImportError:
     SevenZipReadFS = SevenZipFS = SevenZipSaver = None
 
+try:
+    import lzma
+except ImportError:
+    lzma = None
 
 FS_VERSION = tuple(map(int, fs.__version__.split('.')))
 
 
-def sevenzip_compress(handle, source_fs):
+def sevenzip_compress(handle, source_fs, **options):
     if hasattr(handle, 'seek') and handle.seekable():
         handle.seek(0)
-    saver = SevenZipSaver(handle, overwrite=False)
+    saver = SevenZipSaver(handle, overwrite=False, **options)
     saver.save(source_fs)
 
 
@@ -79,6 +83,45 @@ class TestSevenZipReadFS(ArchiveReadTestCases, unittest.TestCase):
         handle = io.BytesIO()
         super(TestSevenZipReadFS, self).setUp(handle)
 
+    def test_password_protected_file(self):
+        buffer = io.BytesIO()
+        source_fs = fs.memoryfs.MemoryFS()
+        source_fs.settext("foo.txt", "Hello, World")
+        sevenzip_compress(buffer, source_fs, password="pwd")
+
+        # test with no password
+        buffer.seek(0)
+        with SevenZipReadFS(buffer, close_handle=False) as archive:
+            self.assertRaises(PermissionDenied, archive.readtext, "foo.txt")
+        # test with wrong password
+        buffer.seek(0)
+        with SevenZipReadFS(buffer, password="password", close_handle=False) as archive:
+            self.assertRaises(OperationFailed, archive.readtext, "foo.txt")
+        # test with good password
+        buffer.seek(0)
+        with SevenZipReadFS(buffer, password="pwd", close_handle=False) as archive:
+            self.assertEqual(archive.readtext("foo.txt"), "Hello, World")
+
+    def test_password_protected_header(self):
+        buffer = io.BytesIO()
+        source_fs = fs.memoryfs.MemoryFS()
+        source_fs.settext("foo.txt", "Hello, World")
+        sevenzip_compress(buffer, source_fs, password="pwd", encrypt_header=True)
+
+        # test with no password
+        buffer.seek(0)
+        with self.assertRaises(CreateFailed) as ctx:
+            archive = SevenZipReadFS(buffer, close_handle=False)
+        self.assertIsInstance(ctx.exception.exc, PermissionDenied)
+        # test with no password
+        buffer.seek(0)
+        with self.assertRaises(CreateFailed) as ctx:
+            archive = SevenZipReadFS(buffer, password="password", close_handle=False)
+        self.assertIsInstance(ctx.exception.exc, (lzma.LZMAError, TypeError))
+        # test with good password
+        buffer.seek(0)
+        with SevenZipReadFS(buffer, password="pwd", close_handle=False) as archive:
+            self.assertEqual(archive.readtext("foo.txt"), "Hello, World")
 
 @unittest.skipUnless(py7zr, 'py7zr not available')
 class TestSevenZipFSio(ArchiveIOTestCases, unittest.TestCase):
