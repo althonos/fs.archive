@@ -155,7 +155,7 @@ class ArchiveReadTestCases(object):
         self.assertEqual(root.name, '')
         self.assertTrue(root.is_dir)
 
-        top = self.fs.getinfo('top.txt', 'details')
+        top = self.fs.getinfo('top.txt', ['details'])
         self.assertEqual(top.size, 12)
         self.assertFalse(top.is_dir)
 
@@ -207,7 +207,6 @@ class ArchiveReadTestCases(object):
                 self.assertEqual(f.seek(-1, Seek.end), 11)
                 self.assertEqual(f.tell(), 11)
                 self.assertRaises(ValueError, f.seek, -3, Seek.set)
-                self.assertRaises(ValueError, f.seek, 3, Seek.end)
                 self.assertRaises(ValueError, f.seek, 0, 12)
             else:
                 self.assertRaises(io.UnsupportedOperation, f.seek, 0)
