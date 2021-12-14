@@ -1,12 +1,16 @@
 # `fs.archive` [![star me](https://img.shields.io/github/stars/althonos/fs.archive.svg?style=social&maxAge=3600&label=Star)](https://github.com/althonos/fs.archive/stargazers)
 
-[![Source](https://img.shields.io/badge/source-GitHub-303030.svg?maxAge=300&style=flat-square)](https://github.com/althonos/fs.archive)
-[![PyPI](https://img.shields.io/pypi/v/fs.archive.svg?style=flat-square&maxAge=300)](https://pypi.python.org/pypi/fs.archive)
-[![Actions](https://img.shields.io/github/workflow/status/althonos/fs.archive/Test/master?style=flat-square&maxAge=300)](https://github.com/althonos/fs.archive/actions)
-[![Codecov](https://img.shields.io/codecov/c/github/althonos/fs.archive/master.svg?style=flat-square&maxAge=300)](https://codecov.io/gh/althonos/fs.archive)
-[![Codacy](https://img.shields.io/codacy/grade/eadf418db5a84efd9fa1b470529dcad6/master.svg?style=flat-square&maxAge=300)](https://www.codacy.com/app/althonos/fs.archive/dashboard)
-[![Format](https://img.shields.io/pypi/format/fs.archive.svg?style=flat-square&maxAge=300)](https://pypi.python.org/pypi/fs.archive)
-[![License](https://img.shields.io/pypi/l/fs.archive.svg?style=flat-square&maxAge=300)](https://choosealicense.com/licenses/mit/)
+[![Source](https://img.shields.io/badge/source-GitHub-303030.svg?logo=git&maxAge=36000&style=flat-square)](https://github.com/althonos/fs.archive)
+[![PyPI](https://img.shields.io/pypi/v/fs.archive.svg?logo=pypi&style=flat-square&maxAge=3600)](https://pypi.python.org/pypi/fs.archive)
+[![Actions](https://img.shields.io/github/workflow/status/althonos/fs.archive/Test/master?logo=github&style=flat-square&maxAge=300)](https://github.com/althonos/fs.archive/actions)
+[![Codecov](https://img.shields.io/codecov/c/github/althonos/fs.archive/master.svg?logo=codecov&style=flat-square&maxAge=300)](https://codecov.io/gh/althonos/fs.archive)
+[![Codacy](https://img.shields.io/codacy/grade/eadf418db5a84efd9fa1b470529dcad6/master.svg?logo=codacy&style=flat-square&maxAge=300)](https://www.codacy.com/app/althonos/fs.archive/dashboard)
+[![License](https://img.shields.io/pypi/l/fs.archive.svg?style=flat-square&maxAge=36000)](https://choosealicense.com/licenses/mit/)
+[![Versions](https://img.shields.io/pypi/pyversions/fs.archive.svg?logo=python&style=flat-square&maxAge=300)](https://pypi.org/project/fs.archive)
+[![Format](https://img.shields.io/pypi/format/fs.archive.svg?style=flat-square&maxAge=300)](https://pypi.org/project/fs.archive)
+[![GitHub issues](https://img.shields.io/github/issues/althonos/fs.archive.svg?style=flat-square&maxAge=600)](https://github.com/althonos/fs.archive/issues)
+[![Downloads](https://img.shields.io/badge/dynamic/json?style=flat-square&color=303f9f&maxAge=86400&label=downloads&query=%24.total_downloads&url=https%3A%2F%2Fapi.pepy.tech%2Fapi%2Fprojects%2Ffs.archive)](https://pepy.tech/project/fs.archive)
+[![Changelog](https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square)](https://github.com/althonos/fs.archive/blob/master/CHANGELOG.md)
 
 ## Requirements
 
