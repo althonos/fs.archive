@@ -54,6 +54,17 @@ class SevenZipReadFS(base.ArchiveReadFS):
     }
 
     def __init__(self, handle, **options):  # noqa: D102, D107
+        """Create a new 7z reader filesystem.
+
+        Parameters:
+            handle (`io.IOBase` or `str`): A filename or a readable
+                file-like object storing the archive to read.
+
+        Keyword Arguments:
+            close_handle (`boolean`): If ``True``, close the handle
+                when the filesystem is closed. **[default: True]**
+
+        """
         super(SevenZipReadFS, self).__init__(handle, **options)
         self._7z = py7zr.SevenZipFile(handle, 'r')
         self._members = {abspath(info.filename):info for info in self._7z.files}
@@ -181,6 +192,18 @@ class SevenZipSaver(base.ArchiveSaver):
     """
 
     def __init__(self, output, overwrite=False, initial_position=0, **options):  # noqa: D102, D107
+        """Create a new 7z serializer.
+
+        Parameters:
+            output (`io.IOBase` or `str`): The filename of the destination
+                or a file handle in which to write the archive.
+            overwrite (`boolean`): If True, use a temporary file to save
+                the contents of the archive. Useful when updating an archive
+                file. **[default: False]**
+            initial_position (`int`): The initial position of the stream when
+                it was seen for the first time. **[default: 0]**
+
+        """
         super(SevenZipSaver, self).__init__(output, overwrite, initial_position)
 
     @staticmethod
@@ -236,9 +259,3 @@ class SevenZipFS(base.ArchiveFS):
 
     _read_fs_cls = SevenZipReadFS
     _saver_cls = SevenZipSaver
-
-    def __init__(self, handle, **options):  # noqa: D102, D107
-        # options.setdefault('compression', zipfile.ZIP_DEFLATED)
-        # options.setdefault('encoding', 'utf-8')
-        options['proxy'] = options.pop('temp_fs', 'temp://__7ztemp__')
-        super(SevenZipFS, self).__init__(handle, **options)

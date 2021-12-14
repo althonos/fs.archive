@@ -167,6 +167,17 @@ class ISOReadFS(base.ArchiveReadFS):
         return Info(info)
 
     def __init__(self, handle, **options):  # noqa: D102, D107
+        """Create a new ISO reader filesystem.
+
+        Parameters:
+            handle (`io.IOBase` or `str`): A filename or a readable
+                file-like object storing the archive to read.
+
+        Keyword Arguments:
+            close_handle (`boolean`): If ``True``, close the handle
+                when the filesystem is closed. **[default: True]**
+
+        """
         super(ISOReadFS, self).__init__(handle, **options)
         self._cd = pycdlib.PyCdlib()
 
@@ -242,6 +253,27 @@ class ISOSaver(base.ArchiveSaver):
     """
 
     def __init__(self, output, overwrite=False, initial_position=0, **options):  # noqa: D102, D107
+        """Create a new archive filesystem.
+
+        Parameters:
+            handle (io.IOBase or str): A filename or a stream storing an
+                archive and/or in which to write the updated archive.
+            proxy (FS): The filesystem to use as to perform temporary
+                write operations. Leave to `None` to use the default
+                defined in `~fs.archive.wrap.WrapWritable`.
+                **[default: `~fs.memoryfs.MemoryFS`]**
+
+        Keyword Arguments:
+            close_handle (boolean): If `True`, close the handle
+                when the filesystem is closed. **[default: True]**
+            joliet (boolean): If `True`, enable Joliet extensions to
+                be added to the ISO image. **[default: True]**
+            rock_ridge (str): The level of the Rock Ridge extensions to
+                add to the ISO image. **[default: "1.12"]**
+            interchange_level (int): The ISO interchange level to use
+                for the ISO image. **[default: 1]**
+
+        """
         super(ISOSaver, self).__init__(output, overwrite, initial_position)
 
         self.joliet = options.pop('joliet', False)

@@ -33,7 +33,7 @@ class ArchiveSaver(object):
         """Create a new serializer.
 
         Parameters:
-            output (`io.IOBase` or `str`): the filename of the destination
+            output (`io.IOBase` or `str`): The filename of the destination
                 or a file handle in which to write the archive.
             overwrite (`boolean`): If True, use a temporary file to save
                 the contents of the archive. Useful when updating an archive
@@ -118,11 +118,11 @@ class ArchiveReadFS(FS):
         """Create a new archive reader filesystem.
 
         Parameters:
-            handle (`io.IOBase` or `str`): a filename or a readable
-                file-like object storing the archive to read
+            handle (`io.IOBase` or `str`): A filename or a readable
+                file-like object storing the archive to read.
 
         Keyword Arguments:
-            close_handle (`boolean`): if ``True``, close the handle
+            close_handle (`boolean`): If ``True``, close the handle
                 when the filesystem is closed. **[default: True]**
 
         """
@@ -199,7 +199,7 @@ class ArchiveReadFS(FS):
 class ArchiveFS(WrapFS):
     """A wrapper filesystem allowing to read, write and update an archive.
     """
-    
+
     _read_fs_cls = NotImplemented
     _saver_cls = NotImplemented
 
@@ -207,15 +207,15 @@ class ArchiveFS(WrapFS):
         """Create a new archive filesystem.
 
         Parameters:
-            handle (io.IOBase or str): a filename or a stream storing an
+            handle (io.IOBase or str): A filename or a stream storing an
                 archive and/or in which to write the updated archive.
-            proxy (FS): the filesystem to use as to perform temporary
+            proxy (FS): The filesystem to use as to perform temporary
                 write operations. Leave to `None` to use the default
                 defined in `~fs.archive.wrap.WrapWritable`.
                 **[default: `~fs.memoryfs.MemoryFS`]**
 
         Keyword Arguments:
-            close_handle (boolean): if `True`, close the handle
+            close_handle (boolean): If `True`, close the handle
                 when the filesystem is closed. **[default: True]**
 
         """

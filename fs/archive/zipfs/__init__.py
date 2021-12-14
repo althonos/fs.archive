@@ -55,6 +55,20 @@ class ZipReadFS(base.ArchiveReadFS):
     }
 
     def __init__(self, handle, **options):  # noqa: D102, D107
+        """Create a new ZIP reader filesystem.
+
+        Parameters:
+            handle (`io.IOBase` or `str`): A filename or a readable
+                file-like object storing the archive to read
+
+        Keyword Arguments:
+            close_handle (`boolean`): If ``True``, close the handle
+                when the filesystem is closed. **[default: True]**
+            encoding (`str`): The encoding to use for reading the ZIP
+                file. When `None` given, use `sys.getdefaultencoding`
+                to detect the system encoding. **[default: None]**
+
+        """
         super(ZipReadFS, self).__init__(handle, **options)
         self._zip = zipfile.ZipFile(self._handle)
 
@@ -215,6 +229,26 @@ class ZipSaver(base.ArchiveSaver):
     """
 
     def __init__(self, output, overwrite=False, initial_position=0, **options):  # noqa: D102, D107
+        """Create a new ZIP serializer.
+
+        Parameters:
+            output (`io.IOBase` or `str`): The filename of the destination
+                or a file handle in which to write the archive.
+            overwrite (`boolean`): If True, use a temporary file to save
+                the contents of the archive. Useful when updating an archive
+                file. **[default: False]**
+            initial_position (`int`): The initial position of the stream when
+                it was seen for the first time. **[default: 0]**
+
+        Keyword Arguments:
+            encoding (`str`): The encoding to use for the ZIP archive.
+                **[default: utf-8]**
+            compression (`int`): The compression level to use.
+                **[default: zipfile.ZIP_DEFLATED]**
+            buffer_size (`int`): The buffer size to use.
+                **[default: io.DEFAULT_BUFFER_SIZE]**
+
+        """
         super(ZipSaver, self).__init__(output, overwrite, initial_position)
         self.encoding = options.pop('encoding', 'utf-8')
         self.compression = options.pop('compression', zipfile.ZIP_DEFLATED)
@@ -285,7 +319,25 @@ class ZipFS(base.ArchiveFS):
     _saver_cls = ZipSaver
 
     def __init__(self, handle, **options):  # noqa: D102, D107
+        """Create a new TAR archive filesystem.
+
+        Parameters:
+            handle (io.IOBase or str): A filename or a stream storing an
+                archive and/or in which to write the updated archive.
+            proxy (FS): The filesystem to use as to perform temporary
+                write operations. Leave to `None` to use the default
+                defined in `~fs.archive.wrap.WrapWritable`.
+                **[default: `~fs.memoryfs.MemoryFS`]**
+
+        Keyword Arguments:
+            close_handle (boolean): If `True`, close the handle
+                when the filesystem is closed. **[default: True]**
+            compression (int): The ZIP compression leve to use.
+                **[default: zipfile.ZIP_DEFLATED]**
+            encoding (str): The encoding to use for the TAR archive.
+                **[default: 'utf-8']**
+
+        """
         options.setdefault('compression', zipfile.ZIP_DEFLATED)
         options.setdefault('encoding', 'utf-8')
-        options['proxy'] = options.pop('temp_fs', 'temp://__ziptemp__')
         super(ZipFS, self).__init__(handle, **options)
