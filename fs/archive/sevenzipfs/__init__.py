@@ -10,6 +10,8 @@ import functools
 import itertools
 import stat
 
+import six
+import lzma
 import py7zr
 import iocursor
 from py7zr.helpers import ArchiveTimestamp
@@ -63,15 +65,34 @@ class SevenZipReadFS(base.ArchiveReadFS):
         Keyword Arguments:
             close_handle (`boolean`): If ``True``, close the handle
                 when the filesystem is closed. **[default: True]**
+            password (`str`): The password to use for decrypting the
+                archive contents. **[default: None]**
 
         """
         super(SevenZipReadFS, self).__init__(handle, **options)
-        self._7z = py7zr.SevenZipFile(handle, 'r')
-        self._members = {abspath(info.filename):info for info in self._7z.files}
-        self._bydir = collections.defaultdict(list)
-        for info in self._7z.files:
-            self._bydir[abspath(dirname(info.filename))].append(info)
-        self._extracted = {}
+        self._password = options.get('password')
+        self._start_position = self._handle.tell()
+
+        try:
+            _7z = py7zr.SevenZipFile(handle, 'r', password=self._password)
+        except py7zr.exceptions.PasswordRequired as exc:
+            raise errors.CreateFailed(
+                exc=errors.PermissionDenied(msg="7z archive is password protected", exc=exc)
+            )
+        except lzma.LZMAError as exc:
+            if password is not None:
+                raise errors.CreateFailed(
+                    exc=errors.PermissionDenied(msg="wrong password provided", exc=exc)
+                )
+            else:
+                raise errors.CreateFailed(exc=exc)
+        else:
+            self._members = {abspath(info.filename):info for info in _7z.files}
+            self._bydir = collections.defaultdict(list)
+            for info in _7z.files:
+                self._bydir[abspath(dirname(info.filename))].append(info)
+        finally:
+            _7z.close()
 
     def _get_info_from_entry(self, entry, namespaces=None):
         namespaces = namespaces or ()
@@ -155,16 +176,22 @@ class SevenZipReadFS(base.ArchiveReadFS):
             raise errors.ResourceNotFound(path)
         elif _info.is_directory:
             raise errors.FileExpected(path)
+        elif _info.emptystream:
+            return io.BytesIO()
 
-        if _path not in self._extracted:
-            files = self._7z.readall()
-            self._extracted.update({ abspath(k):v for k,v in files.items() })
+        self._handle.seek(self._start_position)
+        try:
+            _7z = py7zr.SevenZipFile(self._handle, 'r', password=self._password)
+        except py7zr.exceptions.PasswordRequired as exc:
+            raise errors.PermissionDenied(msg="7z archive is password protected", exc=exc)
+        except lzma.LZMAError as exc:
+            raise errors.OperationFailed(exc=exc)
+        else:
+            decompressed = _7z.read([_path])
+        finally:
+            _7z.close()
 
-        return iocursor.Cursor(self._extracted[_path].getbuffer())
-        #
-        # buffer = self._7z.read([_path])[_path]
-        # print(buffer.getvalue())
-        # return buffer
+        return iocursor.Cursor(decompressed[_path].getbuffer())
 
     def isdir(self, path):
         if path in '/':
