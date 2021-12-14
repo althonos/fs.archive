@@ -17,7 +17,7 @@ from ...info import Info
 from ...mode import Mode
 from ...time import datetime_to_epoch
 from ...path import forcedir, relpath, dirname, basename, abspath
-from ...path import iteratepath, recursepath, frombase, join
+from ...path import iteratepath, recursepath, frombase, join, isbase
 from ...enums import ResourceType, Seek
 from ...iotools import RawWrapper
 from ..._fscompat import fsdecode, fsencode
@@ -169,7 +169,7 @@ class ZipReadFS(base.ArchiveReadFS):
         for fullname in self._namelist:
             fullname = abspath(fullname.rstrip('/'))
 
-            if fullname.startswith(_path) and fullname != _path:
+            if isbase(_path, fullname) and fullname != _path:
 
                 name = iteratepath(relpath(frombase(_path, fullname)))[0]
                 fullname = join(_path, name)
