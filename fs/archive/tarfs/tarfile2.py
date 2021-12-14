@@ -23,7 +23,7 @@ class TarFile(tarfile.TarFile):  # noqa: D101
     if six.PY3:
         OPEN_METH["xz"] = "xzopen"
 
-    if lzma is not None:
+    elif lzma is not None:
         OPEN_METH["xz"] = "xzopen"
 
         @classmethod
