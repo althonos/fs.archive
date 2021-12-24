@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-[Unreleased]: https://github.com/althonos/fs.archive/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/althonos/fs.archive/compare/v0.7.1...HEAD
+
+
+## [v0.7.1] - 2021-12-24
+
+[v0.7.1]: https://github.com/althonos/fs.archive/compare/v0.7.0...v0.7.1
+
+### Fixed
+- `fs.archive.open_archive` not being able to open 7z files ([#8](https://github.com/althonos/fs.archive/issues/8)).
+- `py7zr.exceptions.Bad7zFile` not being wrapped when thrown in `SevenZipReadFS.__init__`.
 
 
 ## [v0.7.0] - 2021-12-14
