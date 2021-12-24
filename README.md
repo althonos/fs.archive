@@ -90,7 +90,7 @@ situation.
 
 ## Credits
 
-`fs.sshfs` is developped and maintainted by:
+`fs.sshfs` is developed and maintained by:
 - [Martin Larralde](https://github.com/althonos)
 
 This project obviously owes a lot to the PyFilesystem2 project and
