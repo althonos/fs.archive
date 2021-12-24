@@ -16,6 +16,7 @@ import py7zr
 import iocursor
 from py7zr.helpers import ArchiveTimestamp
 from py7zr.py7zr import FILE_ATTRIBUTE_UNIX_EXTENSION
+from py7zr.exceptions import Bad7zFile
 
 from ... import errors
 from ...info import Info
@@ -80,7 +81,7 @@ class SevenZipReadFS(base.ArchiveReadFS):
             raise errors.CreateFailed(
                 exc=errors.PermissionDenied(msg="7z archive is password protected", exc=exc)
             )
-        except (lzma.LZMAError, TypeError) as exc:
+        except (lzma.LZMAError, TypeError, Bad7zFile) as exc:
             raise errors.CreateFailed(exc=exc)
         else:
             self._members = {abspath(info.filename):info for info in _7z.files}
