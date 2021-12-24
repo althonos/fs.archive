@@ -93,6 +93,9 @@ situation.
 `fs.sshfs` is developed and maintained by:
 - [Martin Larralde](https://github.com/althonos)
 
+The following people contributed to `fs.archive`:
+- [Matt Alexander](https://github.com/mattalexx)
+
 This project obviously owes a lot to the PyFilesystem2 project and
 [all its contributors](https://github.com/PyFilesystem/pyfilesystem2/blob/master/CONTRIBUTORS.md).
 
