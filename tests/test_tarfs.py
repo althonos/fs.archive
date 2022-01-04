@@ -1,26 +1,25 @@
 # coding: utf-8
-from __future__ import absolute_import
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 import io
 import os
-import six
+import shutil
+import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
-import uuid
 
-import fs.test
-import fs.wrap
 import fs.errors
 import fs.memoryfs
+import fs.test
+import fs.wrap
+from fs.path import abspath
+
 import fs.archive.tarfs
-
 from fs import ResourceType
-from fs.path import join, forcedir, abspath, recursepath
-from fs.archive.test import ArchiveReadTestCases, ArchiveIOTestCases
 from fs.archive._utils import UniversalContainer
-
+from fs.archive.test import ArchiveReadTestCases, ArchiveIOTestCases
 
 FS_VERSION = tuple(map(int, fs.__version__.split('.')))
 
@@ -172,3 +171,52 @@ class TestTarFSInferredDirectories(unittest.TestCase):
         self.assertEqual(info.name, "foo")
         self.assertEqual(info.size, 0)
         self.assertIs(info.type, ResourceType.directory)
+
+
+class TestTarFSReadFromTarCFDotSlashName(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tarfs = fs.archive.tarfs.TarReadFS(io.BytesIO(cls._build_fixture()))
+
+    @staticmethod
+    def _build_fixture() -> bytes:
+        cd_back = os.curdir
+        tmp = tempfile.mkdtemp()
+        try:
+            os.chdir(tmp)
+            os.mkdir("sub")
+            open("file1", 'a').close()
+            open("sub/file2", 'a').close()
+            result = subprocess.run(
+                ("tar", "-cf", "/dev/stdout", "./file1", "./sub/file2"),
+                stdout=subprocess.PIPE, check=True)
+            return result.stdout
+        finally:
+            os.chdir(cd_back)
+            shutil.rmtree(tmp)
+
+    def test_listdir(self):
+        self.assertListEqual(self.tarfs.listdir('/'), ['file1', 'sub'])
+        self.assertListEqual(self.tarfs.listdir('/sub'), ['file2'])
+
+    def test_exists(self):
+        self.assertTrue(self.tarfs.exists('file1'))
+        self.assertTrue(self.tarfs.exists('sub/file2'))
+        self.assertTrue(self.tarfs.exists('/file1'))
+        self.assertTrue(self.tarfs.exists('/sub/file2'))
+        self.assertTrue(self.tarfs.exists('./file1'))
+        self.assertTrue(self.tarfs.exists('./sub/file2'))
+
+    def test_walker_info(self):
+        infos = list(self.tarfs.walk.info())
+        name, info = infos.pop(0)
+        self.assertEqual(name, '/file1')
+        self.assertEqual(info.raw, {'basic': {'is_dir': False, 'name': 'file1'}})
+        name, info = infos.pop(0)
+        self.assertEqual(name, '/sub')
+        self.assertEqual(info.raw, {'basic': {'is_dir': True, 'name': 'sub'}})
+        name, info = infos.pop(0)
+        self.assertEqual(name, '/sub/file2')
+        self.assertEqual(info.raw, {'basic': {'is_dir': False, 'name': 'file2'}})
+        self.assertListEqual(infos, [])

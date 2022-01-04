@@ -11,6 +11,7 @@ import tarfile
 import datetime
 
 import six
+from fs.path import normpath
 
 from ... import errors
 from ...info import Info
@@ -91,7 +92,7 @@ class TarReadFS(base.ArchiveReadFS):
             sys.getdefaultencoding().replace('ascii', 'utf-8')
 
         self._members = {
-            self._decode(info.name): info
+            normpath(self._decode(info.name)): info
                 for info in self._tar.getmembers()
         }
 
