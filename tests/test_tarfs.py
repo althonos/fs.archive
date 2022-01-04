@@ -180,7 +180,7 @@ class TestTarFSReadFromTarCFDotSlashName(unittest.TestCase):
         cls.tarfs = fs.archive.tarfs.TarReadFS(io.BytesIO(cls._build_fixture()))
 
     @staticmethod
-    def _build_fixture() -> bytes:
+    def _build_fixture():
         cd_back = os.curdir
         tmp = tempfile.mkdtemp()
         try:
