@@ -197,7 +197,7 @@ class TestTarFSReadFromTarCFDotSlashName(unittest.TestCase):
             shutil.rmtree(tmp)
 
     def test_listdir(self):
-        self.assertListEqual(self.tarfs.listdir('/'), ['file1', 'sub'])
+        self.assertListEqual(sorted(self.tarfs.listdir('/')), ['file1', 'sub'])
         self.assertListEqual(self.tarfs.listdir('/sub'), ['file2'])
 
     def test_exists(self):
@@ -209,14 +209,10 @@ class TestTarFSReadFromTarCFDotSlashName(unittest.TestCase):
         self.assertTrue(self.tarfs.exists('./sub/file2'))
 
     def test_walker_info(self):
-        infos = list(self.tarfs.walk.info())
-        name, info = infos.pop(0)
-        self.assertEqual(name, '/file1')
-        self.assertEqual(info.raw, {'basic': {'is_dir': False, 'name': 'file1'}})
-        name, info = infos.pop(0)
-        self.assertEqual(name, '/sub')
-        self.assertEqual(info.raw, {'basic': {'is_dir': True, 'name': 'sub'}})
-        name, info = infos.pop(0)
-        self.assertEqual(name, '/sub/file2')
-        self.assertEqual(info.raw, {'basic': {'is_dir': False, 'name': 'file2'}})
-        self.assertListEqual(infos, [])
+        file1 = self.tarfs.getinfo('file1')
+        self.assertTrue(file1)
+        self.assertEqual(file1.raw, {'basic': {'is_dir': False, 'name': 'file1'}})
+
+        sub = self.tarfs.getinfo('sub')
+        self.assertTrue(sub)
+        self.assertEqual(sub.raw, {'basic': {'is_dir': True, 'name': 'sub'}})
