@@ -191,12 +191,12 @@ class TestTarFSReadFromTarCFDotSlashName(unittest.TestCase):
 
             # Create archive
             cmd = ("tar", "-cf", "/dev/stdout", "./file1", "./sub/file2")
-            with subprocess.Popen(cmd, stdout=subprocess.PIPE) as p:
-                stdout, stderr = p.communicate()
-                ec = p.poll()
-                if ec != 0:
-                    raise Exception('tar -cf returned exit code %d', ec)
-                return io.BytesIO(stdout).read()
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            stdout, stderr = p.communicate()
+            ec = p.poll()
+            if ec != 0:
+                raise Exception('tar -cf returned exit code %d', ec)
+            return io.BytesIO(stdout).read()
         finally:
             os.chdir(cd_back)
             shutil.rmtree(tmp)
