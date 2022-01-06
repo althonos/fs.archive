@@ -11,13 +11,12 @@ import tarfile
 import datetime
 
 import six
-from fs.path import normpath
 
 from ... import errors
 from ...info import Info
 from ...mode import Mode
 from ...time import datetime_to_epoch
-from ...path import basename, relpath, splitext, isbase, parts, frombase
+from ...path import basename, relpath, splitext, isbase, parts, frombase, normpath
 from ...enums import ResourceType
 from ...permissions import Permissions
 

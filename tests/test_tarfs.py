@@ -1,25 +1,26 @@
 # coding: utf-8
-from __future__ import absolute_import, unicode_literals
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import io
 import os
-import shutil
-import subprocess
-import sys
+import six
 import tarfile
 import tempfile
 import unittest
+import uuid
 
-import fs.errors
-import fs.memoryfs
 import fs.test
 import fs.wrap
-from fs.path import abspath
-
+import fs.errors
+import fs.memoryfs
 import fs.archive.tarfs
+
 from fs import ResourceType
-from fs.archive._utils import UniversalContainer
+from fs.path import join, forcedir, abspath, recursepath
 from fs.archive.test import ArchiveReadTestCases, ArchiveIOTestCases
+from fs.archive._utils import UniversalContainer
+
 
 FS_VERSION = tuple(map(int, fs.__version__.split('.')))
 
@@ -181,25 +182,16 @@ class TestTarFSReadFromTarCFDotSlashName(unittest.TestCase):
 
     @staticmethod
     def _build_fixture():
-        cd_back = os.curdir
-        tmp = tempfile.mkdtemp()
-        try:
-            os.chdir(tmp)
-            os.mkdir("sub")
-            open("file1", 'a').close()
-            open("sub/file2", 'a').close()
-
-            # Create archive
-            cmd = ("tar", "-cf", "/dev/stdout", "./file1", "./sub/file2")
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-            stdout, stderr = p.communicate()
-            ec = p.poll()
-            if ec != 0:
-                raise Exception('tar -cf returned exit code %d', ec)
-            return io.BytesIO(stdout).read()
-        finally:
-            os.chdir(cd_back)
-            shutil.rmtree(tmp)
+        with fs.memoryfs.MemoryFS() as tmpfs:
+            tmpfile = tmpfs.open("test.tar", "wb+")
+            with tarfile.open(mode="w", fileobj=tmpfile) as tf:
+                tf.addfile(tarfile.TarInfo("./file1"), io.StringIO())
+                info = tarfile.TarInfo("./sub")
+                info.type = tarfile.DIRTYPE
+                tf.addfile(info, io.BytesIO())
+                tf.addfile(tarfile.TarInfo("./sub/file2"), io.StringIO())
+            tmpfile.seek(0)
+            return tmpfile.read()
 
     def test_listdir(self):
         self.assertListEqual(sorted(self.tarfs.listdir('/')), ['file1', 'sub'])
