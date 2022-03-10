@@ -22,6 +22,7 @@ from .. import walk
 from .. import errors
 from ..test import UNICODE_TEXT
 from ..enums import Seek
+from ..errors import CreateFailed
 
 from . import base
 
@@ -92,6 +93,17 @@ class ArchiveReadTestCases(object):
         self.source_fs.close()
         self.fs.close()
         self.remove_archive(self.handle)
+
+    def test_init_file_not_found(self):
+        self.assertRaises(CreateFailed, self._archive_read_fs, "nonsensefile")
+
+    def test_init_typerror(self):
+        self.assertRaises(TypeError, self._archive_read_fs, dict())
+
+    def test_init_non_seekable(self):
+        handle = io.BytesIO()
+        handle.seekable = lambda: False
+        self.assertRaises(CreateFailed, self._archive_read_fs, handle)
 
     def test_create_failed(self):
         """Check CreateFailed is on rubbish input stream.
