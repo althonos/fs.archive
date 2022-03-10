@@ -133,6 +133,9 @@ class ArchiveReadFS(FS):
         """
         super(ArchiveReadFS, self).__init__()
 
+        self._close_handle = False
+        self._handle = None
+
         if isinstance(handle, six.binary_type):
             # Decode the path if it is in binary format
             handle = fsdecode(fspath(handle))

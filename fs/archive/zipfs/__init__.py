@@ -70,7 +70,11 @@ class ZipReadFS(base.ArchiveReadFS):
 
         """
         super(ZipReadFS, self).__init__(handle, **options)
-        self._zip = zipfile.ZipFile(self._handle)
+
+        try:
+            self._zip = zipfile.ZipFile(self._handle)
+        except Exception as err:
+            raise six.raise_from(errors.CreateFailed("failed to open Zip file"), err)
 
         self._encoding = options.get('encoding') or \
             sys.getdefaultencoding().replace('ascii', 'utf-8')

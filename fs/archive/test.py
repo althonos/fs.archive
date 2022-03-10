@@ -97,7 +97,7 @@ class ArchiveReadTestCases(object):
     def test_init_file_not_found(self):
         self.assertRaises(CreateFailed, self._archive_read_fs, "nonsensefile")
 
-    def test_init_typerror(self):
+    def test_init_typeerror(self):
         self.assertRaises(TypeError, self._archive_read_fs, dict())
 
     def test_init_non_seekable(self):
@@ -310,10 +310,10 @@ class ArchiveReadTestCases(object):
         with self.fs.openbin(filename) as f:
             self.assertEqual(f.read(), b'This is a long file name !')
 
-    def test_create_failed(self):
+    def test_init_typeerror(self):
         """Check that the filesystem constructor raises `CreateFailed`.
         """
-        self.assertRaises(errors.CreateFailed, self._archive_read_fs, None)
+        self.assertRaises(TypeError, self._archive_read_fs, None)
 
     def test_validatepath(self):
         """Check that validatepath works as intended.
