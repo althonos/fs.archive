@@ -153,7 +153,7 @@ class ZipReadFS(base.ArchiveReadFS):
         return zip_bytes
 
     def isfile(self, path):  # noqa: D102
-        _path = self.validatepath(path).lower()
+        _path = self.validatepath(path)
         return relpath(_path) in self._contents
 
     def isdir(self, path):  # noqa: D102
