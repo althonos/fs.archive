@@ -125,8 +125,16 @@ class ArchiveReadFS(FS):
             close_handle (`boolean`): If ``True``, close the handle
                 when the filesystem is closed. **[default: True]**
 
+        Raises:
+            `TypeError`: When ``handle`` does not have the right type.
+            `~fs.errors.CreateFailed`: When ``handle`` could not be used to
+                created a new `ArchiveReadFS`.
+
         """
         super(ArchiveReadFS, self).__init__()
+
+        self._close_handle = False
+        self._handle = None
 
         if isinstance(handle, six.binary_type):
             # Decode the path if it is in binary format
@@ -137,18 +145,23 @@ class ArchiveReadFS(FS):
             _path = os.path.expanduser(os.path.expandvars(handle))
             _path = os.path.normpath(os.path.abspath(_path))
             # Create the readable fs if the handle exists
-            if os.path.exists(_path) and os.access(_path, os.R_OK):
+            try:
                 self._close_handle = True
                 self._handle = open(_path, 'rb')
+            except Exception as err:
+                six.raise_from(errors.CreateFailed("Could not open {!r}".format(handle)), err)
 
         elif hasattr(handle, 'read'):
             # Create the readable fs if the handle is readable
             if handle.readable() and handle.seekable():
                 self._close_handle = options.get('close_handle', True)
                 self._handle = handle
+            else:
+                raise errors.CreateFailed("Could not read or seek from {!r}".format(handle))
 
         else:
-            raise errors.CreateFailed("cannot use {}".format(handle))
+            ty = type(handle).__name__
+            raise TypeError("Expected str, bytes or file-like handle, found {}".format(ty))
 
     def __repr__(self):  # noqa: D105
         return "{}({!r})".format(

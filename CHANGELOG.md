@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-[Unreleased]: https://github.com/althonos/fs.archive/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/althonos/fs.archive/compare/v0.7.2...HEAD
+
+
+## [v0.7.2] - 2022-03-10
+
+[v0.7.2]: https://github.com/althonos/fs.archive/compare/v0.7.1...v0.7.2
+
+### Fixed
+- `ISOReadFS.__init__` not raising a `CreateFailed` exception when given a file-like handle that is not seekable ([#11](https://github.com/althonos/fs.archive/issues/11)).
+- `ZipReadFS.isfile` forcefully converting paths to lowercase ([#6](https://github.com/althonos/fs.archive/issues/6)).
+
+### Changed
+- Update minimum version of `py7zr` to `v0.17.3` to support changes in the dictionary returned by `py7zr.SevenZipFile.read`.
 
 
 ## [v0.7.1] - 2021-12-24

@@ -70,7 +70,11 @@ class ZipReadFS(base.ArchiveReadFS):
 
         """
         super(ZipReadFS, self).__init__(handle, **options)
-        self._zip = zipfile.ZipFile(self._handle)
+
+        try:
+            self._zip = zipfile.ZipFile(self._handle)
+        except Exception as err:
+            raise six.raise_from(errors.CreateFailed("failed to open Zip file"), err)
 
         self._encoding = options.get('encoding') or \
             sys.getdefaultencoding().replace('ascii', 'utf-8')
@@ -153,7 +157,7 @@ class ZipReadFS(base.ArchiveReadFS):
         return zip_bytes
 
     def isfile(self, path):  # noqa: D102
-        _path = self.validatepath(path).lower()
+        _path = self.validatepath(path)
         return relpath(_path) in self._contents
 
     def isdir(self, path):  # noqa: D102

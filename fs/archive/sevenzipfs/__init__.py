@@ -22,7 +22,7 @@ from ... import errors
 from ...info import Info
 from ...mode import Mode
 from ...osfs import OSFS
-from ...path import abspath, dirname, basename, join
+from ...path import abspath, dirname, basename, join, relpath
 from ...enums import ResourceType
 from ...permissions import Permissions
 
@@ -191,7 +191,7 @@ class SevenZipReadFS(base.ArchiveReadFS):
             if _7z is not None:
                 _7z.close()
 
-        return iocursor.Cursor(decompressed[_path].getbuffer())
+        return iocursor.Cursor(decompressed[relpath(_path)].getbuffer())
 
     def isdir(self, path):
         if path in '/':
