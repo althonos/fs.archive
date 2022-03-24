@@ -16,7 +16,7 @@ from ... import errors
 from ...info import Info
 from ...mode import Mode
 from ...time import datetime_to_epoch
-from ...path import basename, relpath, splitext, isbase, parts, frombase
+from ...path import basename, relpath, splitext, isbase, parts, frombase, normpath
 from ...enums import ResourceType
 from ...permissions import Permissions
 
@@ -91,7 +91,7 @@ class TarReadFS(base.ArchiveReadFS):
             sys.getdefaultencoding().replace('ascii', 'utf-8')
 
         self._members = {
-            self._decode(info.name): info
+            normpath(self._decode(info.name)): info
                 for info in self._tar.getmembers()
         }
 

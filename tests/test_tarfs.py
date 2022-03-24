@@ -172,3 +172,41 @@ class TestTarFSInferredDirectories(unittest.TestCase):
         self.assertEqual(info.name, "foo")
         self.assertEqual(info.size, 0)
         self.assertIs(info.type, ResourceType.directory)
+
+
+class TestTarFSReadFromTarCFDotSlashName(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tarfs = fs.archive.tarfs.TarReadFS(cls._build_fixture())
+
+    @staticmethod
+    def _build_fixture():
+        tmpfile = io.BytesIO()
+        with tarfile.open(mode="w", fileobj=tmpfile) as tf:
+            tf.addfile(tarfile.TarInfo("./file1"), io.StringIO())
+            info = tarfile.TarInfo("./sub")
+            info.type = tarfile.DIRTYPE
+            tf.addfile(info, io.BytesIO())
+            tf.addfile(tarfile.TarInfo("./sub/file2"))
+        tmpfile.seek(0)
+        return tmpfile
+
+    def test_listdir(self):
+        self.assertListEqual(sorted(self.tarfs.listdir('/')), ['file1', 'sub'])
+        self.assertListEqual(self.tarfs.listdir('/sub'), ['file2'])
+
+    def test_exists(self):
+        self.assertTrue(self.tarfs.exists('file1'))
+        self.assertTrue(self.tarfs.exists('sub/file2'))
+        self.assertTrue(self.tarfs.exists('/file1'))
+        self.assertTrue(self.tarfs.exists('/sub/file2'))
+        self.assertTrue(self.tarfs.exists('./file1'))
+        self.assertTrue(self.tarfs.exists('./sub/file2'))
+
+    def test_walker_info(self):
+        file1 = self.tarfs.getinfo('file1')
+        self.assertEqual(file1.raw, {'basic': {'is_dir': False, 'name': 'file1'}})
+
+        sub = self.tarfs.getinfo('sub')
+        self.assertEqual(sub.raw, {'basic': {'is_dir': True, 'name': 'sub'}})
