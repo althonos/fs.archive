@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-[Unreleased]: https://github.com/althonos/fs.archive/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/althonos/fs.archive/compare/v0.7.3...HEAD
+
+
+## [v0.7.3] - 2022-03-24
+
+[v0.7.3]: https://github.com/althonos/fs.archive/compare/v0.7.2...v0.7.3
+
+### Fixed
+- Mark `TarReadFS` and `ZipReadFS` as case-sensitive filesystems ([#12](https://github.com/althonos/fs.archive/issues/12)).
+- Fix `TarReadFS` failing to read archives created with dotslash paths ([#10](https://github.com/althonos/fs.archive/pull/10)).
 
 
 ## [v0.7.2] - 2022-03-10
