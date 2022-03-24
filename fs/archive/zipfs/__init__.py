@@ -41,7 +41,7 @@ class ZipReadFS(base.ArchiveReadFS):
 
     _meta = {
         'standard': {
-            'case_insensitive': True,
+            'case_insensitive': False,
             'network': False,
             'read_only': True,
             'supports_rename': False,
