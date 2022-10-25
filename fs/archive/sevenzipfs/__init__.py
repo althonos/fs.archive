@@ -182,7 +182,7 @@ class SevenZipReadFS(base.ArchiveReadFS):
         _7z = None
         try:
             _7z = py7zr.SevenZipFile(self._handle, 'r', password=self._password)
-            decompressed = _7z.read([_path])
+            decompressed = _7z.read([relpath(_path)])
         except py7zr.exceptions.PasswordRequired as exc:
             raise errors.PermissionDenied(msg="7z archive is password protected", exc=exc)
         except lzma.LZMAError as exc:
