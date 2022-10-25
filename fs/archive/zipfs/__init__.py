@@ -163,7 +163,7 @@ class ZipReadFS(base.ArchiveReadFS):
     def isdir(self, path):  # noqa: D102
         if path in '/':
             return True
-        _path = self.validatepath(path).lower()
+        _path = self.validatepath(path)
         return relpath(forcedir(_path)) in self._contents
 
     def exists(self, path):  # noqa: D102
